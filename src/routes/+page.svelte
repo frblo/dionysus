@@ -16,7 +16,7 @@
 	 * @param newTitle the new title
 	 */
 	function writeTitle(newTitle:string) {
-		let i = 0;
+		let i = 0; // Index for writeChar()
 		deleteChar(titleLikeness());
 
 		/**
@@ -26,10 +26,8 @@
 		*/
 		function titleLikeness() {
 			let likeness = 0;
-			for (let i = 0; i < title.length; i++) {
-				if (i > newTitle.length)
-					break;
-				else if (title[i] == newTitle[i])
+			for (let i = 0; i < title.length && i < newTitle.length; i++) {
+				if (title[i] == newTitle[i])
 					likeness++;
 				else
 					break;
@@ -71,7 +69,7 @@
 		}
 	}
 
-	// Writes the title on load
+	// Writes the title on page load
 	writeTitle(titles[0]);
 </script>
 
@@ -84,6 +82,7 @@
 		{title}
 	</h1>
 
+	<!-- Temporary button for testing -->
 	<button style="display: block; margin: auto;" on:click={handleClick}>
 		write title
 	</button>
