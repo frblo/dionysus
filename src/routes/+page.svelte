@@ -3,7 +3,7 @@
 	let typeSpeed = 150; // The speed of the typewriter effect
 
 	// A list of titles of varying hilarity
-	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus", "dionȳsus", "dionysos", "Husband of Ariadne"];
+	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus", "dionȳsus", "dionysos", "dionysaur", "di-oh-NO-sus", "dionysus-tainable"];
 
 	function handleClick() {
 		// Pick a random title from the array
