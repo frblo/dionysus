@@ -23,6 +23,8 @@
 				setTimeout(writeChar, typeSpeed);
 		}
 	}
+
+	writeTitle("dionysus");
 </script>
 
 <div>
@@ -33,7 +35,7 @@
 	>
 		{title}
 	</h1>
-	<button style="margin: 0 50%;" on:click={handleClick}>
+	<button style="display: block; margin: auto;" on:click={handleClick}>
 		write title
 	</button>
 </div>
