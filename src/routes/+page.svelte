@@ -1,12 +1,12 @@
-<!-- <h1>Welcome to SvelteKit</h1> -->
-<!-- <p>Smaka bly, bitch!</p> -->
-
 <script lang="ts">
 	let title = ""; // The title on the page
 	let typeSpeed = 100; // The speed of the typewriter effect
+	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus"];
 
 	function handleClick() {
-		writeTitle("dionysus");
+		// Pick a random title from the array
+		let nt = titles[Math.floor(Math.random() * titles.length)];
+		writeTitle(nt);
 	}
 
 	/**
@@ -15,7 +15,42 @@
 	 */
 	function writeTitle(newTitle:string) {
 		let i = 0;
-		writeChar();
+		deleteChar(titleLikeness());
+
+		/**
+		 * Calculates the likeness between the current title
+		 * and the new title and returns the number of characters
+		 * which are to be removed
+		*/
+		function titleLikeness() {
+			let likeness = 0;
+			for (let i = 0; i < title.length; i++) {
+				if (i > newTitle.length)
+					break;
+				else if (title[i] == newTitle[i])
+					likeness++;
+				else
+					break;
+			}
+
+			return title.length - likeness;
+		}
+
+		/**
+		 * Deletes a character at a time and calls itself
+		 * with a timer, then calls writeChar() to write
+		 * out the new title
+		*/
+		function deleteChar(toRemove: number) {
+			if (toRemove > 0) {
+				title = title.slice(0, title.length - 1);
+				setTimeout(() => deleteChar(toRemove - 1), typeSpeed);
+			}
+			else {
+				i = title.length;
+				writeChar();
+			}
+		}
 
 		/**
 		 * The typewriting effect itself. Writes out
@@ -23,6 +58,9 @@
 		 * a timer
 		 */
 		function writeChar() {
+			if (i >= newTitle.length)
+				return;
+			
 			title += newTitle[i]
 			i++;
 			
@@ -32,7 +70,7 @@
 	}
 
 	// Writes the title on load
-	writeTitle("dionysus");
+	writeTitle(titles[0]);
 </script>
 
 <div>
