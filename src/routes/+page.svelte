@@ -1,11 +1,32 @@
 <script lang="ts">
 	let title = ""; // The title on the page
 	let typeSpeed = 150; // The speed of the typewriter effect
-
+	
 	// A list of titles of varying hilarity
-	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus", "dionȳsus", "dionysos", "dionysaur", "di-oh-NO-sus", "dionysus-tainable"];
+	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus", "dionȳsus", "dionysos", "dionysaur", "di-oh-NO-sus", "dionysus-tainability"];
 
+	writeTitle(titles[0]); // Writes the title on page load
+	setTimeout(titleUpdater, 5000 + Math.random() * 5000); // Change the title after 5-10 seconds
+	
 	function handleClick() {
+		pickNewTitle();
+	}
+
+	/**
+	 * Calls pickNewTitle() and then calls itself
+	 * with a timer to continously change the title
+	*/
+	function titleUpdater() {
+		pickNewTitle();
+		setTimeout(titleUpdater, 5000 + Math.random() * 5000);
+	}
+
+	/**
+	 * Picks a new title from the array and calls
+	 * writeTitle() to change the title on the page
+	 * with a typewriter effect
+	*/
+	function pickNewTitle() {
 		// Pick a random title from the array
 		let nt = titles[Math.floor(Math.random() * titles.length)];
 		writeTitle(nt);
@@ -40,6 +61,7 @@
 		 * Deletes a character at a time and calls itself
 		 * with a timer, then calls writeChar() to write
 		 * out the new title
+		 * @param toRemove the number of characters to remove
 		*/
 		function deleteChar(toRemove: number) {
 			if (toRemove > 0) {
@@ -69,8 +91,6 @@
 		}
 	}
 
-	// Writes the title on page load
-	writeTitle(titles[0]);
 </script>
 
 <div>
