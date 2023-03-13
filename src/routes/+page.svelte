@@ -1,20 +1,41 @@
 <script lang="ts">
 	let title = ""; // The title on the page
-	let typeSpeed = 150; // The speed of the typewriter effect
-	
+	let typeSpeed = 150; // The speed of the typewriter effect in ms
+
 	// A list of titles of varying hilarity
-	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "chanel dio-nysus", "dionȳsus", "dionysos", "dionysaur", "di-oh-NO-sus", "dionysus-tainability"];
+	const titles: string[] = ["dionysus", "dionySUS", "Dionysus", "🍇", "d10ny5u5", "Διόνυσος", "bacchus", "dionȳsus", "dionysos", "dionysaur", "di-oh-NO-sus"];
 
 	writeTitle(titles[0]); // Writes the title on page load
 	setTimeout(titleUpdater, 5000 + Math.random() * 5000); // Change the title after 5-10 seconds
-	
+
 	function handleClick() {
-		pickNewTitle();
+		writeTitle("🍇");
+	}
+
+	let darkMode = false; // Whether dark mode is enabled
+	/**
+	 * Toggles dark mode
+	 */
+	function enableDarkMode() {
+		const darkColor = "#464646"; // The dark mode background color
+		const lightColor = "#fff"; // The light mode background color
+
+		if (darkMode) {
+			document.body.style.backgroundColor = lightColor;
+			document.body.style.color = darkColor;
+		}
+		else {
+			document.body.style.backgroundColor = darkColor;
+			document.body.style.color = lightColor;
+		}
+
+		darkMode = !darkMode;
 	}
 
 	/**
 	 * Calls pickNewTitle() and then calls itself
 	 * with a timer to continously change the title
+	 * every 5-10 seconds
 	*/
 	function titleUpdater() {
 		pickNewTitle();
@@ -90,20 +111,43 @@
 				setTimeout(writeChar, typeSpeed);
 		}
 	}
-
 </script>
 
-<div>
-	<h1 style = "
-		font-family: :'Courier New', Courier, monospace;
-		text-align:center;
-		"
-	>
-		{title}
-	</h1>
+<body>
+	<div>
+		<h1 style = "
+			font-family: :'Courier New', Courier, monospace;
+			text-align:center;
+			margin-top: 200px;
+			height: 20px;
+		">
+			{title}
+		</h1>
+		
+		<!-- Temporary button for testing -->
+		<button style="display: block; margin: auto; margin-top: 50px" on:click={() => pickNewTitle()}>
+			write title
+		</button>
+	</div>
+	<div>
+		<button style="
+			display: block;
+			margin: 10px;
+			margin-top: 50px;
+			background-color: #464646;
+			color: #fff;
+			border: 1px solid #fff;
+			border-radius: 5px;
+			padding: 10px;
+		" on:click={() => enableDarkMode()}>
+			dark mode
+		</button>
+	</div>
+</body>
 
-	<!-- Temporary button for testing -->
-	<button style="display: block; margin: auto;" on:click={handleClick}>
-		write title
-	</button>
-</div>
+<!-- <style>
+	:global(body) {
+		background-color: {backgroundColor};
+		color: {textColor};
+	}
+</style> -->
