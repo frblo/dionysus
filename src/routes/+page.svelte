@@ -8,10 +8,6 @@
 	writeTitle(titles[0]); // Writes the title on page load
 	setTimeout(titleUpdater, 5000 + Math.random() * 5000); // Change the title after 5-10 seconds
 
-	function handleClick() {
-		writeTitle("🍇");
-	}
-
 	let darkMode = false; // Whether dark mode is enabled
 	/**
 	 * Toggles dark mode
@@ -113,7 +109,12 @@
 	}
 </script>
 
-<body>
+<!-- <body>
+	<div>
+
+	</div>
+</body> -->
+<main>
 	<div>
 		<h1 style = "
 			font-family: :'Courier New', Courier, monospace;
@@ -123,16 +124,10 @@
 		">
 			{title}
 		</h1>
-		
-		<!-- Temporary button for testing -->
-		<button style="display: block; margin: auto; margin-top: 50px" on:click={() => pickNewTitle()}>
-			write title
-		</button>
 	</div>
-	<div>
-		<button style="
+	
+	<button style="
 			display: block;
-			margin: 10px;
 			margin-top: 50px;
 			background-color: #464646;
 			color: #fff;
@@ -141,9 +136,8 @@
 			padding: 10px;
 		" on:click={() => enableDarkMode()}>
 			dark mode
-		</button>
-	</div>
-</body>
+	</button>
+</main>
 
 <!-- <style>
 	:global(body) {
