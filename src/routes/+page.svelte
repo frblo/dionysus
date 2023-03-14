@@ -2,7 +2,7 @@
 	// Import the sun and moon icons for darkmode button
 	import darkModeSun from "./../assets/darkmodesun.svg";
 	import darkModeMoon from "./../assets/darkmodemoon.svg";
-	let darkModeIcon = darkModeSun;
+	let darkModeIcon = darkModeMoon;
 
 	let title = ""; // The title on the page
 	let typeSpeed = 150; // The speed of the typewriter effect in ms
@@ -19,7 +19,7 @@
 	 */
 	function enableDarkMode() {
 		const darkColor = "#464646"; // The dark mode background color
-		const lightColor = "#fff"; // The light mode background color
+		const lightColor = "#ffffff"; // The light mode background color
 
 		if (darkMode) {
 			document.body.style.backgroundColor = lightColor;
@@ -131,7 +131,10 @@
 		</div>
 	</main>
 
-	<img class="dark-mode-img" src={darkModeIcon} alt="darkmode sun" on:click={() => enableDarkMode()}/>
+	<img
+		class="dark-mode-img" src={darkModeIcon}
+		alt="darkmode sun" on:click={() => enableDarkMode()}
+	/>
 </body>
 
 <style>
@@ -141,13 +144,13 @@
 		height: 100vh;
 		overflow: hidden;
 	}
-	
+
 	.dark-mode-img {
 		position: fixed;
 		bottom: 20px;
 		left: 20px;
 		display: block;
-		width: 50px;
-		height: 50px;
+		width: 35px;
+		height: 35px;
 	}
 </style>

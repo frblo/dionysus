@@ -2,6 +2,6 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="100%" height="100%" viewBox="0 0 2000 2000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
     <g transform="matrix(1.79919,-1.13023,1.13023,1.79919,-1895.18,368.964)">
-        <path id="Moon" d="M1106.14,542.199C851.354,542.199 644.501,749.052 644.501,1003.84C644.501,1258.62 851.354,1465.47 1106.14,1465.47C953.268,1403.92 829.156,1218.26 829.156,1003.84C829.156,789.414 953.268,603.751 1106.14,542.199Z" style="fill:none;stroke:black;stroke-width:39.22px;"/>
+        <path id="Moon" d="M1106.14,542.199C851.354,542.199 644.501,749.052 644.501,1003.84C644.501,1258.62 851.354,1465.47 1106.14,1465.47C953.268,1403.92 829.156,1218.26 829.156,1003.84C829.156,789.414 953.268,603.751 1106.14,542.199Z" style="fill:none;stroke:black;stroke-width:60px;"/>
     </g>
 </svg>
