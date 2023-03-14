@@ -1,4 +1,9 @@
 <script lang="ts">
+	// Import the sun and moon icons for darkmode button
+	import darkModeSun from "./../assets/darkmodesun.svg";
+	import darkModeMoon from "./../assets/darkmodemoon.svg";
+	let darkModeIcon = darkModeSun;
+
 	let title = ""; // The title on the page
 	let typeSpeed = 150; // The speed of the typewriter effect in ms
 
@@ -19,10 +24,12 @@
 		if (darkMode) {
 			document.body.style.backgroundColor = lightColor;
 			document.body.style.color = darkColor;
+			darkModeIcon = darkModeMoon;
 		}
 		else {
 			document.body.style.backgroundColor = darkColor;
 			document.body.style.color = lightColor;
+			darkModeIcon = darkModeSun;
 		}
 
 		darkMode = !darkMode;
@@ -107,23 +114,24 @@
 				setTimeout(writeChar, typeSpeed);
 		}
 	}
+
 </script>
 
 <body>
-	<div>
-		<h1 style = "
-			font-family: :'Courier New', Courier, monospace;
-			text-align:center;
-			margin-top: 200px;
-			height: 20px;
-		">
-			{title}
-		</h1>
-	</div>
-	
-	<button class="dark-mode" on:click={() => enableDarkMode()}>
-			dark mode
-	</button>
+	<main>
+		<div>
+			<h1 style = "
+				font-family: :'Courier New', Courier, monospace;
+				text-align:center;
+				margin-top: 200px;
+				height: 20px;
+			">
+				{title}
+			</h1>
+		</div>
+	</main>
+
+	<img class="dark-mode-img" src={darkModeIcon} alt="darkmode sun" on:click={() => enableDarkMode()}/>
 </body>
 
 <style>
@@ -134,14 +142,12 @@
 		overflow: hidden;
 	}
 	
-	.dark-mode {
+	.dark-mode-img {
 		position: fixed;
 		bottom: 20px;
 		left: 20px;
 		display: block;
-		background-color: #464646;
-		color: #fff;
-		border: 1px solid #fff;
-		border-radius: 5px;
+		width: 50px;
+		height: 50px;
 	}
 </style>
