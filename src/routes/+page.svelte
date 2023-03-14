@@ -109,12 +109,7 @@
 	}
 </script>
 
-<!-- <body>
-	<div>
-
-	</div>
-</body> -->
-<main>
+<body>
 	<div>
 		<h1 style = "
 			font-family: :'Courier New', Courier, monospace;
@@ -126,22 +121,27 @@
 		</h1>
 	</div>
 	
-	<button style="
-			display: block;
-			margin-top: 50px;
-			background-color: #464646;
-			color: #fff;
-			border: 1px solid #fff;
-			border-radius: 5px;
-			padding: 10px;
-		" on:click={() => enableDarkMode()}>
+	<button class="dark-mode" on:click={() => enableDarkMode()}>
 			dark mode
 	</button>
-</main>
+</body>
 
-<!-- <style>
-	:global(body) {
-		background-color: {backgroundColor};
-		color: {textColor};
+<style>
+	body {
+		margin: 0;
+		padding: 0;
+		height: 100vh;
+		overflow: hidden;
 	}
-</style> -->
+	
+	.dark-mode {
+		position: fixed;
+		bottom: 20px;
+		left: 20px;
+		display: block;
+		background-color: #464646;
+		color: #fff;
+		border: 1px solid #fff;
+		border-radius: 5px;
+	}
+</style>
