@@ -5,8 +5,7 @@
 
 </script>
 
-<div>
-    <h1 style=margin-top:200px>Login</h1>
+<h1 style=margin-top:200px>Login</h1>
     <form style=margin-top:20px>
         <input type="text" bind:value={username} placeholder="Username"/>
         <input type="password" bind:value={password} placeholder="Password"/>
@@ -15,8 +14,7 @@
             Sign in
         </button>
     </form>
-</div>
-
+    
 <style>
     h1 {
         text-align: center;
