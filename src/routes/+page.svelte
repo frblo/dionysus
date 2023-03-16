@@ -120,7 +120,7 @@
 		border-style: double;
 		border-radius: 5px;
 		background-color: transparent;
-		color: var(--textColor);
+		color: inherit;
 		font-size: 20px;
 		font-family: 'Courier New', Courier, monospace;
 		text-align: center;

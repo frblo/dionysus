@@ -26,6 +26,7 @@
         margin: 30px auto;
         display: block;
         background-color: transparent;
+        color: inherit;
         padding: 8px 10px;
         border: solid 1px;
     }
@@ -34,6 +35,7 @@
         margin: 30px auto;
         display: block;
         background-color: transparent;
+        color: inherit;
         padding: 8px 10px;
         border: 0cap;
     }
