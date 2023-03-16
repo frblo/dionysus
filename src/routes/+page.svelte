@@ -119,7 +119,6 @@
 		border-width: thick;
 		border-style: double;
 		border-radius: 5px;
-		border-color: var(--textColor);
 		background-color: transparent;
 		color: var(--textColor);
 		font-size: 20px;
