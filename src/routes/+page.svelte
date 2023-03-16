@@ -101,12 +101,12 @@
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 60px;
 		text-align: center;
-		margin-top: 240px;
+		margin-top: 20%;
 		height: 20px;
 	}
 
 	.login-button {
-		margin: 150px auto;
+		margin: 100px auto;
 		display: block;
 		width: 100px;
 		padding: 5px;

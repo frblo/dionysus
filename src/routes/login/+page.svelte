@@ -5,15 +5,15 @@
 
 </script>
 
-<h1 style=margin-top:200px>Login</h1>
-    <form style=margin-top:20px>
-        <input type="text" bind:value={username} placeholder="Username"/>
-        <input type="password" bind:value={password} placeholder="Password"/>
+<h1 style=margin-top:20%>Login</h1>
+<form style=margin-top:20px>
+    <input type="text" bind:value={username} placeholder="Username"/>
+    <input type="password" bind:value={password} placeholder="Password"/>
 
-        <button type="submit">
-            Sign in
-        </button>
-    </form>
+    <button type="submit">
+        Sign in
+    </button>
+</form>
     
 <style>
     h1 {
