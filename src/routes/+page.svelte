@@ -90,16 +90,12 @@
 </script>
 
 <div>
-	<div>
-		<h1 class="title">
-			{title}
-		</h1>
-	</div>
-	<div>
-		<a class="login-button" href="/login">
-			Login
-		</a>
-	</div>
+	<h1 class="title">
+		{title}
+	</h1>
+	<a class="login-button" href="/login">
+		Login
+	</a>
 </div>
 
 <style>

@@ -12,7 +12,7 @@
         <input type="password" bind:value={password} placeholder="Password"/>
 
         <button type="submit">
-            Login
+            Sign in
         </button>
     </form>
 </div>
@@ -23,20 +23,22 @@
     }
 
     input {
-        margin: 30px auto;
+        margin: 20px auto;
         display: block;
         background-color: transparent;
         color: inherit;
         padding: 8px 10px;
         border: solid 1px;
+        font: inherit;
     }
 
     button {
-        margin: 30px auto;
+        margin: 0 auto;
         display: block;
         background-color: transparent;
         color: inherit;
         padding: 8px 10px;
-        border: 0cap;
+        border: solid 1px;
+        font: inherit;
     }
 </style>
