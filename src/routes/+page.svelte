@@ -1,9 +1,4 @@
 <script lang="ts">
-	// Import the sun and moon icons for darkmode button
-	import darkModeSun from "./../assets/darkmodesun.svg";
-	import darkModeMoon from "./../assets/darkmodemoon.svg";
-	let darkModeIcon = darkModeMoon;
-
 	let title = ""; // The title on the page
 	let typeSpeed = 150; // The speed of the typewriter effect in ms
 
@@ -12,28 +7,6 @@
 
 	writeTitle(titles[0]); // Writes the title on page load
 	setTimeout(titleUpdater, 5000 + Math.random() * 5000); // Change the title after 5-10 seconds
-
-	let darkMode = false; // Whether dark mode is enabled
-	/**
-	 * Toggles dark mode
-	 */
-	function enableDarkMode() {
-		const darkColor = "#464646"; // The dark mode background color
-		const lightColor = "#ffffff"; // The light mode background color
-
-		if (darkMode) {
-			document.body.style.backgroundColor = lightColor;
-			document.body.style.color = darkColor;
-			darkModeIcon = darkModeMoon;
-		}
-		else {
-			document.body.style.backgroundColor = darkColor;
-			document.body.style.color = lightColor;
-			darkModeIcon = darkModeSun;
-		}
-
-		darkMode = !darkMode;
-	}
 
 	/**
 	 * Calls pickNewTitle() and then calls itself
@@ -114,43 +87,43 @@
 				setTimeout(writeChar, typeSpeed);
 		}
 	}
-
 </script>
 
-<body>
-	<main>
-		<div>
-			<h1 style = "
-				font-family: :'Courier New', Courier, monospace;
-				text-align:center;
-				margin-top: 200px;
-				height: 20px;
-			">
-				{title}
-			</h1>
-		</div>
-	</main>
-
-	<img
-		class="dark-mode-img" src={darkModeIcon}
-		alt="darkmode sun" on:click={() => enableDarkMode()}
-	/>
-</body>
+<div>
+	<div>
+		<h1 class="title">
+			{title}
+		</h1>
+	</div>
+	<div>
+		<a class="login-button" href="/login">
+			Login
+		</a>
+	</div>
+</div>
 
 <style>
-	body {
-		margin: 0;
-		padding: 0;
-		height: 100vh;
-		overflow: hidden;
+	.title {
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 60px;
+		text-align: center;
+		margin-top: 240px;
+		height: 20px;
 	}
 
-	.dark-mode-img {
-		position: fixed;
-		bottom: 20px;
-		left: 20px;
+	.login-button {
+		margin: 150px auto;
 		display: block;
-		width: 35px;
-		height: 35px;
+		width: 100px;
+		padding: 5px;
+		border-width: thick;
+		border-style: double;
+		border-radius: 5px;
+		border-color: var(--textColor);
+		background-color: transparent;
+		color: var(--textColor);
+		font-size: 20px;
+		font-family: 'Courier New', Courier, monospace;
+		text-align: center;
 	}
 </style>
