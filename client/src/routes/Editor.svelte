@@ -20,23 +20,23 @@
 	let editorEl: HTMLDivElement
 
         let view: EditorView | null = null;
+        let provider: WebsocketProvider | null = null;
 
 	onMount(() => {
             const ydoc = new Y.Doc();
-            const provider = new WebsocketProvider(serverUrl, room, ydoc);
+            provider = new WebsocketProvider(serverUrl, room, ydoc);
             const ytext = ydoc.getText("codemirror");
 
             const undoManager = new Y.UndoManager(ytext);
 
-            const awareness = provider.awareness;
-            awareness.setLocalStateField("user", user);
+            provider.awareness.setLocalStateField("user", user);
 
             view = new EditorView({
                 parent: editorEl,
                 state: EditorState.create({
                     doc: ytext.toString(),
                     extensions: [
-                        yCollab(ytext, awareness, { undoManager }),
+                        yCollab(ytext, provider.awareness, { undoManager }),
                         keymap.of([
                             {
                                 key: "Mod-z",
@@ -64,10 +64,16 @@
 
             return () => {
                 view?.destroy()
-                provider.destroy()
+                provider?.destroy()
                 ydoc.destroy()
             }
-	})
+	});
+
+        export function updateUser(user: { name: string, color: string }) {
+            if (provider) {
+                provider.awareness.setLocalStateField("user", user);
+            }
+        }
 </script>
 
 <div bind:this={editorEl} class="editor"></div>
