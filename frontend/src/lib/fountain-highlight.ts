@@ -24,15 +24,33 @@ const tokenTypes = {
   section: /^(#+)(?: *)(.*)/,
   synopsis: /^(?:\=(?!\=+) *)(.*)/,
 
-  // note: /^(?:\[{2}(?!\[+))(.+)(?:\]{2}(?!\[+))$/,
-  // note_inline: /(?:\[{2}(?!\[+))([\s\S]+?)(?:\]{2}(?!\[+))/g,
-  boneyard: /(^\/\*|^\*\/)$/g,
+  note: /^\[\[(.+)\]\]/g,
 
   page_break: /^\={3,}$/,
-  // line_break: /^ {2}$/,
 };
 
 function tokenize(stream, state) {
+  if (state.boneyard === true) {
+    // End of boneyard block?
+    if (stream.match("*/")) {
+      state.boneyard = false;
+      return "boneyard";
+    }
+
+    stream.next();
+    return "boneyard";
+  }
+
+  // Starting a boneyard?
+  if (stream.match("/*")) {
+    state.boneyard = true;
+    return "boneyard";
+  }
+
+  if (stream.match(tokenTypes.note)) {
+    return "note";
+  }
+
   if (stream.match(tokenTypes.bold_italic)) {
     return "bold_italic";
   }
@@ -82,11 +100,12 @@ export const fountainLanguage = StreamLanguage.define({
     italic: t.emphasis,
     character: t.namespace,
     dialogue: t.string,
-    parenthetical: t.comment,
-    centered: t.heading2,
-    page_break: t.heading2,
+    note: t.comment,
+    parenthetical: t.string,
+    centered: t.integer,
+    page_break: t.bool,
     transition: t.keyword,
-    boneyard: t.string,
+    boneyard: t.lineComment,
   },
 });
 
