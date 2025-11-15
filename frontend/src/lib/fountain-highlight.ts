@@ -3,12 +3,7 @@ import {
   LanguageSupport,
   StreamLanguage,
 } from "@codemirror/language";
-import {
-  EditorView,
-  PluginValue,
-  ViewPlugin,
-  ViewUpdate,
-} from "@codemirror/view";
+
 import { tags as t } from "@lezer/highlight";
 
 const tokenTypes = {
@@ -85,41 +80,6 @@ export const fountainLanguage = StreamLanguage.define({
   },
 });
 
-export const fountainHighlight = HighlightStyle.define([
-  { tag: t.lineComment, color: "#444" },
-  { tag: t.docComment, color: "#888" },
-  { tag: t.className, fontWeight: 600 },
-  { tag: t.heading2, fontWeight: 600, display: "block" },
-  { tag: t.keyword, fontWeight: 600, display: "block" },
-  {
-    tag: t.comment,
-    fontStyle: "italic",
-    display: "block",
-  },
-  {
-    tag: t.propertyName,
-    color: "#225",
-    display: "block",
-  },
-  { tag: t.string, color: "#252", display: "block" },
-]);
-
 export function fountain() {
   return new LanguageSupport(fountainLanguage);
 }
-
-class FountainPlugin implements PluginValue {
-  constructor(view: EditorView) {}
-
-  update(update: ViewUpdate) {
-    // view.dispatch({
-    //   effects: [StateEffect.appendConfig.of([fountain()])],
-    // });
-  }
-
-  destroy() {
-    // ...
-  }
-}
-
-export const fountainPlugin = ViewPlugin.fromClass(FountainPlugin);
