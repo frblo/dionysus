@@ -7,52 +7,58 @@ import {
 import { tags as t } from "@lezer/highlight";
 
 const tokenTypes = {
-  "scene-heading":
+  scene_heading:
     /^((?:\*{0,3}_?)?(?:(?:int|ext|est|i\/e)[. ]).+)|^(?:\.(?!\.+))(.+)/i,
-  // scene_number: /( *#(.+)# *)/,
 
-  character: /^\s*[A-Z][A-Z0-9 \t]+$/,
+  character: /^\s*[A-Z][A-Z0-9 \t]+\^?$|^\@(.+)/,
   dialogue: /^\s*(\^?)?(?:\n(?!\n+))([\s\S]+)/,
   parenthetical: /^(\(.+\))$/,
+
+  bold_italic: /^\*\*\*(.*?)\*\*\*/,
+  bold: /^\*\*(.*?)\*\*/,
+  italic: /^\*(.*?)\*/,
 
   centered: /^>[^<>\n]+<$/g,
   transition: /^(>[^<\n\r]*|[A-Z ]+ TO:)$/,
 
-  // section: /^(#+)(?: *)(.*)/,
+  section: /^(#+)(?: *)(.*)/,
   synopsis: /^(?:\=(?!\=+) *)(.*)/,
 
   // note: /^(?:\[{2}(?!\[+))(.+)(?:\]{2}(?!\[+))$/,
   // note_inline: /(?:\[{2}(?!\[+))([\s\S]+?)(?:\]{2}(?!\[+))/g,
-  // boneyard: /(^\/\*|^\*\/)$/g,
+  boneyard: /(^\/\*|^\*\/)$/g,
 
   page_break: /^\={3,}$/,
   // line_break: /^ {2}$/,
 };
 
 function tokenize(stream, state) {
-  stream.skipToEnd();
-  // if (stream.string.includes("<")) {
-  //   const r = tokenTypes["centered"].test(stream.string);
-  //   console.log(r);
-  // }
-  for (const type in tokenTypes) {
-    if (tokenTypes[type].test(stream.string)) {
-      if (type === "character") {
-        state.inDialogue = true;
+  if (stream.match(tokenTypes.bold_italic)) {
+    return "bold_italic";
+  }
+
+  if (stream.match(tokenTypes.bold)) {
+    return "bold";
+  }
+
+  if (stream.match(tokenTypes.italic)) {
+    return "italic";
+  }
+
+  // If at beginning of line, test block-level tokens
+  if (stream.sol()) {
+    for (const type in tokenTypes) { if (type === "bold") continue; // inline only
+      if (tokenTypes[type].test(stream.string)) {
+        if (type === "character") state.inDialogue = true;
+        stream.skipToEnd();
+        return type;
       }
-      // console.log(3, type, stream.string);
-      return type;
     }
   }
 
-  if (state.inDialogue) {
-    // console.log(3, "dialogue", stream.string);
-    return "dialogue";
-  }
-  // console.log(3, "action", stream.string);
-
-  // Action by default
-  return "action";
+  // If not matched, just consume one char and continue
+  stream.next();
+  return null;
 }
 
 function handleBlank(state, indentLevel) {
@@ -68,15 +74,19 @@ export const fountainLanguage = StreamLanguage.define({
   token: tokenize,
   blankLine: handleBlank,
   tokenTable: {
-    "scene-heading": t.className,
+    scene_heading: t.className,
+    section: t.className,
     synopsis: t.docComment,
-    action: t.lineComment,
-    character: t.propertyName,
+    bold_italic: t.strong,
+    bold: t.strong,
+    italic: t.emphasis,
+    character: t.namespace,
     dialogue: t.string,
     parenthetical: t.comment,
     centered: t.heading2,
     page_break: t.heading2,
     transition: t.keyword,
+    boneyard: t.string,
   },
 });
 
