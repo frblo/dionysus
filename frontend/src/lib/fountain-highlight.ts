@@ -4,7 +4,10 @@ import {
   StreamLanguage,
 } from "@codemirror/language";
 
-import { tags as t } from "@lezer/highlight";
+import { tags as t, Tag } from "@lezer/highlight";
+
+export const bold_italic = Tag.define();
+export const underline = Tag.define();
 
 const tokenTypes = {
   scene_heading:
@@ -17,6 +20,7 @@ const tokenTypes = {
   bold_italic: /^\*\*\*(.*?)\*\*\*/,
   bold: /^\*\*(.*?)\*\*/,
   italic: /^\*(.*?)\*/,
+  underline: /^\_(.*?)\_/,
 
   centered: /^>[^<>\n]+<$/g,
   transition: /^(>[^<\n\r]*|[A-Z ]+ TO:)$/,
@@ -63,6 +67,10 @@ function tokenize(stream, state) {
     return "italic";
   }
 
+  if (stream.match(tokenTypes.underline)) {
+    return "underline";
+  }
+
   // If at beginning of line, test block-level tokens
   if (stream.sol()) {
     for (const type in tokenTypes) { if (type === "bold") continue; // inline only
@@ -95,9 +103,10 @@ export const fountainLanguage = StreamLanguage.define({
     scene_heading: t.className,
     section: t.className,
     synopsis: t.docComment,
-    bold_italic: t.strong,
+    bold_italic: bold_italic,
     bold: t.strong,
     italic: t.emphasis,
+    underline: underline,
     character: t.namespace,
     dialogue: t.string,
     note: t.comment,
@@ -108,6 +117,15 @@ export const fountainLanguage = StreamLanguage.define({
     boneyard: t.lineComment,
   },
 });
+
+export const fountainHighlightStyle = HighlightStyle.define([
+  { tag: underline, textDecorationLine: "underline" },
+  {
+    tag: bold_italic,
+    fontWeight: "bold",
+    fontStyle: "italic",
+  },
+]);
 
 export function fountain() {
   return new LanguageSupport(fountainLanguage);

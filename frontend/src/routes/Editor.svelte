@@ -1,10 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { syntaxHighlighting } from "@codemirror/language";
+  import {
+    defaultHighlightStyle,
+    syntaxHighlighting,
+  } from "@codemirror/language";
   import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
-  import { fountain } from "$lib/fountain-highlight";
+  import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
@@ -50,6 +53,8 @@
         doc: ytext.toString(),
         extensions: [
           fountain(),
+          syntaxHighlighting(fountainHighlightStyle),
+          syntaxHighlighting(defaultHighlightStyle),
           yCollab(ytext, provider.awareness, { undoManager }),
           vimExt,
           keymap.of([
