@@ -6,7 +6,6 @@ import {
 
 import { tags as t, Tag } from "@lezer/highlight";
 
-export const bold_italic = Tag.define();
 export const underline = Tag.define();
 
 const tokenTypes = {
@@ -56,7 +55,7 @@ function tokenize(stream, state) {
   }
 
   if (stream.match(tokenTypes.bold_italic)) {
-    return "bold_italic";
+    return "bold italic";
   }
 
   if (stream.match(tokenTypes.bold)) {
@@ -103,28 +102,22 @@ export const fountainLanguage = StreamLanguage.define({
     scene_heading: t.className,
     section: t.className,
     synopsis: t.docComment,
-    bold_italic: bold_italic,
     bold: t.strong,
     italic: t.emphasis,
     underline: underline,
     character: t.namespace,
     dialogue: t.string,
-    note: t.comment,
+    note: t.lineComment,
     parenthetical: t.string,
     centered: t.integer,
     page_break: t.bool,
     transition: t.keyword,
-    boneyard: t.lineComment,
+    boneyard: t.comment,
   },
 });
 
 export const fountainHighlightStyle = HighlightStyle.define([
   { tag: underline, textDecorationLine: "underline" },
-  {
-    tag: bold_italic,
-    fontWeight: "bold",
-    fontStyle: "italic",
-  },
 ]);
 
 export function fountain() {
