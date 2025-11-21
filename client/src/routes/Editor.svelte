@@ -8,7 +8,9 @@
   import { WebsocketProvider } from "y-websocket";
   import { yCollab } from "y-codemirror.next";
 
-  import { createVim } from "$lib/editor/vim-setup";
+  import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
+  import { vimOn } from "$lib/stores/settings";
+  import type { Unsubscriber } from "svelte/store";
 
   let {
     room = "demo-room-1",
@@ -22,6 +24,7 @@
   let editorEl: HTMLDivElement;
 
   let view: EditorView | null = null;
+  let unsub: Unsubscriber | null = null;
   let provider: WebsocketProvider | null = null;
 
   onMount(() => {
@@ -33,7 +36,7 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vim = createVim(undoManager);
+    const vimExt = createVim(undoManager);
 
     view = new EditorView({
       parent: editorEl,
@@ -41,7 +44,7 @@
         doc: ytext.toString(),
         extensions: [
           yCollab(ytext, provider.awareness, { undoManager }),
-          vim,
+          vimExt,
           keymap.of([
             {
               key: "Mod-z",
@@ -63,11 +66,16 @@
       }),
     });
 
+    unsub = vimOn.subscribe((enabled) => {
+      if (view) setVimEnabled(view, enabled);
+    });
+
     provider.on("status", (e) => {
       console.log(`[yws] ${e.status} ${serverUrl}/${room}`);
     });
 
     return () => {
+      unsub?.();
       view?.destroy();
       provider?.destroy();
       ydoc.destroy();
