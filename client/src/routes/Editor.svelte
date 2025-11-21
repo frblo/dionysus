@@ -8,6 +8,8 @@
   import { WebsocketProvider } from "y-websocket";
   import { yCollab } from "y-codemirror.next";
 
+  import { createVim } from "$lib/editor/vim-setup";
+
   let {
     room = "demo-room-1",
     serverUrl = "ws://localhost:1234",
@@ -31,12 +33,15 @@
 
     provider.awareness.setLocalStateField("user", user);
 
+    const vim = createVim(undoManager);
+
     view = new EditorView({
       parent: editorEl,
       state: EditorState.create({
         doc: ytext.toString(),
         extensions: [
           yCollab(ytext, provider.awareness, { undoManager }),
+          vim,
           keymap.of([
             {
               key: "Mod-z",
