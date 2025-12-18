@@ -1,6 +1,6 @@
 <script lang="ts">
   import Editor from "./Editor.svelte";
-  import { vimOn } from "$lib/stores/settings";
+  import { userSettings } from "$lib/state/settings.svelte";
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
 
@@ -22,7 +22,7 @@
 
 <button
   class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition"
-  onclick={() => vimOn.update((v) => !v)}
+  onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
 >
   Toogle Vim
 </button>

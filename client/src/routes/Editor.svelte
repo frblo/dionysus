@@ -9,8 +9,7 @@
   import { yCollab } from "y-codemirror.next";
 
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
-  import { vimOn } from "$lib/stores/settings";
-  import type { Unsubscriber } from "svelte/store";
+  import { userSettings } from "$lib/state/settings.svelte";
 
   let {
     room = "demo-room-1",
@@ -24,7 +23,6 @@
   let editorEl: HTMLDivElement;
 
   let view: EditorView | null = null;
-  let unsub: Unsubscriber | null = null;
   let provider: WebsocketProvider | null = null;
 
   onMount(() => {
@@ -66,20 +64,20 @@
       }),
     });
 
-    unsub = vimOn.subscribe((enabled) => {
-      if (view) setVimEnabled(view, enabled);
-    });
-
     provider.on("status", (e) => {
       console.log(`[yws] ${e.status} ${serverUrl}/${room}`);
     });
 
     return () => {
-      unsub?.();
       view?.destroy();
       provider?.destroy();
       ydoc.destroy();
     };
+  });
+
+  $effect(() => {
+    if (!view) return;
+    setVimEnabled(view, userSettings.vimEnabled);
   });
 
   export function updateUser(user: { name: string; color: string }) {
