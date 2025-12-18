@@ -8,6 +8,9 @@
   import { WebsocketProvider } from "y-websocket";
   import { yCollab } from "y-codemirror.next";
 
+  import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
+  import { userSettings } from "$lib/state/settings.svelte";
+
   let {
     room = "demo-room-1",
     serverUrl = "ws://localhost:1234",
@@ -31,12 +34,15 @@
 
     provider.awareness.setLocalStateField("user", user);
 
+    const vimExt = createVim(undoManager);
+
     view = new EditorView({
       parent: editorEl,
       state: EditorState.create({
         doc: ytext.toString(),
         extensions: [
           yCollab(ytext, provider.awareness, { undoManager }),
+          vimExt,
           keymap.of([
             {
               key: "Mod-z",
@@ -67,6 +73,11 @@
       provider?.destroy();
       ydoc.destroy();
     };
+  });
+
+  $effect(() => {
+    if (!view) return;
+    setVimEnabled(view, userSettings.vimEnabled);
   });
 
   export function updateUser(user: { name: string; color: string }) {
