@@ -59,6 +59,7 @@
               },
             },
           ]),
+          EditorView.lineWrapping,
           basicSetup,
         ],
       }),
