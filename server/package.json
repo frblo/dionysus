@@ -1,9 +1,0 @@
-{
-  "scripts": {
-    "yws": "HOST=localhost PORT=1234 y-websocket"
-  },
-  "devDependencies": {
-    "@y/websocket-server": "^0.1.1",
-    "prettier": "3.6.2"
-  }
-}
