@@ -6,6 +6,7 @@
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
+  let previewHtml = $state("");
 
   let editorRef: Editor | null = null;
   function applyUserUpdate() {
@@ -15,8 +16,7 @@
   function showPreview() {
     if (editorRef) {
       const source = editorRef?.getContent();
-      const screenplay = preview_play(source);
-      console.log(screenplay);
+      previewHtml = preview_play(source);
     }
   }
 
@@ -49,4 +49,22 @@
   Preview
 </button>
 
-<Editor bind:this={editorRef} user={{ name, color }} />
+<main class="flex h-[calc(100vh-80px)] overflow-hidden">
+  <section class="w-1/2 border-r overflow-auto bg-gray-50">
+    <Editor bind:this={editorRef} user={{ name, color }} />
+  </section>
+
+  <section class="w-1/2 overflow-auto p-8 bg-white prose max-w-none">
+    {#if previewHtml}
+      <iframe
+        title="Screenplay Preview"
+        srcdoc={previewHtml}
+        class="w-full h-full border-none"
+      ></iframe>
+    {:else}
+      <div class="p-8 text-gray-400 italic">
+        Click "Preview" to see results...
+      </div>
+    {/if}
+  </section>
+</main>
