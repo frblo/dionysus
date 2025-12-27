@@ -86,6 +86,10 @@
       provider.awareness.setLocalStateField("user", user);
     }
   }
+
+  export function getContent() {
+    return view ? view.state.doc.toString() : "";
+  }
 </script>
 
 <div bind:this={editorEl} class="editor"></div>
