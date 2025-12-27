@@ -1,14 +1,22 @@
 [package]
 name = "backend"
 version = "0.1.0"
-authors = ["Fredrik Blomqvist", "Emil Hultcrantz"]
+authors = [ "Fredrik Blomqvist", "Emil Hultcrantz" ]
 edition = "2024"
 
 [dependencies]
-anyhow = "1"
-tokio = { version = "1", features = ["full"] }
-axum = "0.8"
-yrs-axum = "0.8.2"
-tower-http = "0.6.8"
+# async
+tokio = { version = "1", features = [ "full" ] }
 futures-util = "0.3.31"
-yrs = "=0.18.8"
+
+# web
+axum = "0.8"
+tower-http = "0.6.8"
+
+# error handling / config
+anyhow = "1"
+
+# crdt
+yrs = "=0.18.8" # pinned to compatable version of yrs-axum
+yrs-axum = "0.8.2"
+

@@ -14,7 +14,7 @@
 
   let {
     room = "demo-room-1",
-    serverUrl = "ws://localhost:8000",
+    serverUrl = "ws://localhost:8000/rooms/ws",
     user = {
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",
