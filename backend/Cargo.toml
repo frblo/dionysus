@@ -8,6 +8,7 @@ edition = "2024"
 # async
 tokio = { version = "1", features = [ "full" ] }
 futures-util = "0.3.31"
+async-trait = "0.1.89"
 
 # web
 axum = "0.8"
@@ -15,6 +16,7 @@ tower-http = "0.6.8"
 
 # error handling / config
 anyhow = "1"
+thiserror = "2"
 
 # crdt
 yrs = "=0.18.8" # pinned to compatable version of yrs-axum

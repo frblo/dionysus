@@ -1,5 +1,6 @@
 use axum::{
-    extract::{ws::WebSocketUpgrade, Path, State},
+    extract::{Path, State, ws::WebSocketUpgrade},
+    http::StatusCode,
     response::IntoResponse,
 };
 
@@ -11,5 +12,14 @@ pub async fn ws_handler(
     Path(room_id): Path<String>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| ws::peer::peer(socket, state, room_id))
+    println!("Request for {room_id} handler!");
+    let bcast = match state.rooms.connect(&room_id).await {
+        Ok(bc) => bc,
+        Err(e) => {
+            println!("{:?}", e);
+            return StatusCode::NOT_FOUND.into_response();
+        }
+    };
+
+    ws.on_upgrade(move |socket| ws::peer::peer(socket, bcast, room_id))
 }
