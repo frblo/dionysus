@@ -26,7 +26,7 @@
   let view: EditorView | null = null;
   let provider: WebsocketProvider | null = null;
 
-  function updatePreview() {
+  export function updatePreview() {
     const script = getContent();
     generatePreview(script);
   }

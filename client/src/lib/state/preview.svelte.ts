@@ -5,5 +5,9 @@ export const preview = $state({
 });
 
 export function generatePreview(script: string) {
+  if (script == "") {
+    preview.html = "";
+    return;
+  }
   preview.html = preview_play(script);
 }

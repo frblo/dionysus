@@ -1,7 +1,7 @@
 <script lang="ts">
   import Editor from "./Editor.svelte";
   import { userSettings } from "$lib/state/settings.svelte";
-  import { preview, generatePreview } from "$lib/state/preview.svelte";
+  import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
 
@@ -15,13 +15,13 @@
 
   function updatePreview() {
     if (editorRef) {
-      const source = editorRef?.getContent();
-      generatePreview(source);
+      editorRef.updatePreview();
     }
   }
 
   onMount(async () => {
     await init();
+    updatePreview();
   });
 </script>
 
@@ -63,7 +63,8 @@
       ></iframe>
     {:else}
       <div class="p-8 text-gray-400 italic">
-        Click "Preview", press "CTRL+s" or run command ":w", to see preview...
+        No content found. Try writing something and then click "Preview", press
+        "CTRL+s" or run command ":w", to see preview...
       </div>
     {/if}
   </section>
