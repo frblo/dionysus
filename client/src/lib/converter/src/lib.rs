@@ -1,11 +1,7 @@
 use rustwell::{export_html, parse};
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
+/// Runs the Rustwell fountain parser and compiles the script into stylized HTML.
 #[wasm_bindgen]
 pub fn preview_play(fountain: String) -> Result<String, JsValue> {
     let parsed = parse(fountain);
