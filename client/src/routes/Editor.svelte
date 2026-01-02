@@ -10,6 +10,7 @@
 
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
+  import { generatePreview } from "$lib/state/preview.svelte";
 
   let {
     room = "demo-room-1",
@@ -18,13 +19,17 @@
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",
     },
-    runPreview,
   } = $props();
 
   let editorEl: HTMLDivElement;
 
   let view: EditorView | null = null;
   let provider: WebsocketProvider | null = null;
+
+  function updatePreview() {
+    const script = getContent();
+    generatePreview(script);
+  }
 
   onMount(() => {
     const ydoc = new Y.Doc();
@@ -35,7 +40,7 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vimExt = createVim(undoManager, runPreview);
+    const vimExt = createVim(undoManager, updatePreview);
 
     view = new EditorView({
       parent: editorEl,
@@ -62,7 +67,7 @@
             {
               key: "Mod-s",
               run: () => {
-                runPreview();
+                updatePreview();
                 return true;
               },
             },

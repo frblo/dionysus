@@ -1,22 +1,22 @@
 <script lang="ts">
   import Editor from "./Editor.svelte";
   import { userSettings } from "$lib/state/settings.svelte";
-  import init, { preview_play } from "$lib/converter/pkg/converter";
+  import { preview, generatePreview } from "$lib/state/preview.svelte";
+  import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
-  let previewHtml = $state("");
 
   let editorRef: Editor | null = null;
   function applyUserUpdate() {
     editorRef?.updateUser({ name, color });
   }
 
-  function showPreview() {
+  function updatePreview() {
     if (editorRef) {
       const source = editorRef?.getContent();
-      previewHtml = preview_play(source);
+      generatePreview(source);
     }
   }
 
@@ -44,27 +44,21 @@
 
 <button
   class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition"
-  onclick={showPreview}
+  onclick={updatePreview}
 >
   Preview
 </button>
 
 <main class="flex h-[calc(100vh-80px)] overflow-hidden">
   <section class="w-1/2 border-r overflow-auto bg-gray-50">
-    <Editor
-      bind:this={editorRef}
-      user={{ name, color }}
-      runPreview={() => {
-        showPreview();
-      }}
-    />
+    <Editor bind:this={editorRef} user={{ name, color }} />
   </section>
 
   <section class="w-1/2 overflow-auto p-8 bg-white prose max-w-none">
-    {#if previewHtml}
+    {#if preview.html}
       <iframe
         title="Screenplay Preview"
-        srcdoc={previewHtml}
+        srcdoc={preview.html}
         class="w-full h-full border-none"
       ></iframe>
     {:else}
