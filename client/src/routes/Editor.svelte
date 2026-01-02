@@ -18,6 +18,7 @@
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",
     },
+    runPreview,
   } = $props();
 
   let editorEl: HTMLDivElement;
@@ -34,7 +35,7 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vimExt = createVim(undoManager);
+    const vimExt = createVim(undoManager, runPreview);
 
     view = new EditorView({
       parent: editorEl,
@@ -55,6 +56,13 @@
               key: "Mod-Shift-z",
               run: () => {
                 undoManager.redo();
+                return true;
+              },
+            },
+            {
+              key: "Mod-s",
+              run: () => {
+                runPreview();
                 return true;
               },
             },

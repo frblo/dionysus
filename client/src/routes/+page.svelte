@@ -51,7 +51,13 @@
 
 <main class="flex h-[calc(100vh-80px)] overflow-hidden">
   <section class="w-1/2 border-r overflow-auto bg-gray-50">
-    <Editor bind:this={editorRef} user={{ name, color }} />
+    <Editor
+      bind:this={editorRef}
+      user={{ name, color }}
+      runPreview={() => {
+        showPreview();
+      }}
+    />
   </section>
 
   <section class="w-1/2 overflow-auto p-8 bg-white prose max-w-none">
@@ -63,7 +69,7 @@
       ></iframe>
     {:else}
       <div class="p-8 text-gray-400 italic">
-        Click "Preview" to see results...
+        Click "Preview", press "CTRL+s" or run command ":w", to see preview...
       </div>
     {/if}
   </section>
