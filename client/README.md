@@ -6,6 +6,12 @@ Install dependencies:
 npm i
 ```
 
+Generate the Web assembly code:
+
+```sh
+./compile-wasm.sh
+```
+
 Start client in development mode with:
 
 ```sh
