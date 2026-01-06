@@ -13,13 +13,16 @@ pub async fn ws_handler(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     println!("Request for {room_id} handler!");
-    let bcast = match state.rooms.connect(&room_id).await {
-        Ok(bc) => bc,
+    let room = match state.rooms.connect(&room_id).await {
+        Ok(r) => r,
         Err(e) => {
             println!("{e:?}");
             return StatusCode::NOT_FOUND.into_response();
         }
     };
 
-    ws.on_upgrade(move |socket| ws::peer::peer(socket, bcast, room_id))
+    let rooms = state.rooms.clone();
+    let bcast = room.bcast.clone();
+
+    ws.on_upgrade(move |socket| ws::peer::peer(socket, rooms, bcast, room_id))
 }

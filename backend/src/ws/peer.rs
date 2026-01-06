@@ -7,7 +7,9 @@ use yrs_axum::{
     ws::{AxumSink, AxumStream},
 };
 
-pub async fn peer(ws: WebSocket, bcast: Arc<BroadcastGroup>, room_id: String) {
+use crate::rooms::RoomManager;
+
+pub async fn peer(ws: WebSocket, rooms: RoomManager, bcast: Arc<BroadcastGroup>, room_id: String) {
     let (sink, stream) = ws.split();
     let sink = Arc::new(Mutex::new(AxumSink::from(sink)));
     let stream = AxumStream::from(stream);
@@ -17,4 +19,6 @@ pub async fn peer(ws: WebSocket, bcast: Arc<BroadcastGroup>, room_id: String) {
         Ok(()) => println!("room={room_id} finished successfully"),
         Err(e) => eprintln!("room={room_id} finished abruptly: {e}"),
     }
+
+    rooms.disconnect(&room_id).await;
 }

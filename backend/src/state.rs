@@ -12,7 +12,7 @@ impl AppState {
     pub async fn new() -> Self {
         let storage = rooms::InMemoryStorage::new().await;
         Self {
-            rooms: RoomManager::new(Arc::new(storage), 32),
+            rooms: RoomManager::new(Arc::new(storage), 32, 50, 1024),
         }
     }
 }
