@@ -10,7 +10,7 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new() -> Self {
-        let storage = rooms::InMemoryStorage::new();
+        let storage = rooms::InMemoryStorage::new().await;
         Self {
             rooms: RoomManager::new(Arc::new(storage), 32),
         }

@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum Error {
     #[error("room not found")]
     NotFound,
@@ -9,16 +10,10 @@ pub enum Error {
     AlreadyExists,
 
     #[error(transparent)]
-    StorageError(#[from] StorageError),
+    Decoding(#[from] yrs::encoding::read::Error),
 
-    #[error(transparent)]
-    DecodingError(#[from] yrs::encoding::read::Error),
-}
-
-#[derive(Debug, Error)]
-pub enum StorageError {
     #[error("storage internal error")]
-    Internal {
+    Backend {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },

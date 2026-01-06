@@ -16,7 +16,7 @@ pub async fn ws_handler(
     let bcast = match state.rooms.connect(&room_id).await {
         Ok(bc) => bc,
         Err(e) => {
-            println!("{:?}", e);
+            println!("{e:?}");
             return StatusCode::NOT_FOUND.into_response();
         }
     };

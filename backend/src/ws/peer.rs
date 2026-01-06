@@ -14,7 +14,7 @@ pub async fn peer(ws: WebSocket, bcast: Arc<BroadcastGroup>, room_id: String) {
 
     let sub = bcast.subscribe(sink, stream);
     match sub.completed().await {
-        Ok(_) => println!("room={} finished successfully", room_id),
-        Err(e) => eprintln!("room={} finished abruptly: {}", room_id, e),
+        Ok(()) => println!("room={room_id} finished successfully"),
+        Err(e) => eprintln!("room={room_id} finished abruptly: {e}"),
     }
 }

@@ -7,7 +7,7 @@ use yrs::{Doc, Transact};
 use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
-use crate::rooms::storage::Storage;
+use crate::rooms::storage::{self, Storage};
 
 #[derive(Clone)]
 pub struct RoomManager {
@@ -36,14 +36,21 @@ impl RoomManager {
         self.create_group(room_id).await
     }
 
-    // pub async fn create_room(&self, room_id: &str) -> Result<(), Error> {
-    //     let exists = self.storage.room_exists(room_id).await?;
-    //     if exists {
-    //         return Err(Error::AlreadyExists);
-    //     }
-    //     self.storage.create_room(room_id).await?;
-    //     Ok(())
-    // }
+    pub async fn create_room(&self, room_id: &str) -> Result<(), Error> {
+        let exists = self.storage.room_exists(room_id).await?;
+        if exists {
+            return Err(Error::AlreadyExists);
+        }
+        self.storage
+            .create_room(
+                room_id,
+                storage::CreateRoomOptions {
+                    ..Default::default()
+                },
+            )
+            .await?;
+        Ok(())
+    }
 
     /// Gets the [`BroadcastGroup`] for the room if it exists in memory
     async fn get_live(&self, room_id: &str) -> Option<Arc<BroadcastGroup>> {
@@ -66,15 +73,21 @@ impl RoomManager {
     }
 
     async fn make_awareness(&self, room_id: &str) -> Result<AwarenessRef, Error> {
-        let Some(updates) = self.storage.load_updates(room_id).await? else {
-            return Err(Error::NotFound);
-        };
+        let updates = self
+            .storage
+            .load_updates(
+                room_id,
+                storage::LoadUpdatesOptions {
+                    ..Default::default()
+                },
+            )
+            .await?;
 
         let doc = Doc::new();
         {
             let mut txn = doc.transact_mut();
             for u in updates {
-                let update = yrs::Update::decode_v1(&u)?;
+                let update = yrs::Update::decode_v1(&u.bytes)?;
                 txn.apply_update(update);
             }
         }
