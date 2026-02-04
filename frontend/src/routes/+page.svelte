@@ -25,46 +25,80 @@
   });
 </script>
 
-<textarea bind:value={name}></textarea>
-<textarea bind:value={color}></textarea>
-
-<button
-  class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition"
-  onclick={applyUserUpdate}
+<header
+  class="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-gray-700 shadow-md z-10"
 >
-  Update identity
-</button>
+  <div class="flex items-center gap-4">
+    <div class="flex flex-col">
+      <label
+        for="user-name"
+        class="text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1 tracking-wider"
+        >User Identity</label
+      >
+      <div class="flex gap-2">
+        <textarea
+          id="user-name"
+          bind:value={name}
+          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-32"
+        ></textarea>
+        <textarea
+          bind:value={color}
+          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-24 font-mono"
+        ></textarea>
+      </div>
+    </div>
 
-<button
-  class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition"
-  onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
->
-  Toogle Vim
-</button>
+    <button
+      class="mt-5 px-3 py-1 rounded border border-gray-500 text-gray-300 text-xs font-semibold hover:bg-gray-700 hover:text-white transition h-8"
+      onclick={applyUserUpdate}
+    >
+      Update
+    </button>
+  </div>
 
-<button
-  class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 active:bg-blue-100 transition"
-  onclick={updatePreview}
->
-  Preview
-</button>
+  <div class="flex items-center gap-2 mt-5">
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
+    >
+      {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
+    </button>
 
-<main class="flex h-[calc(100vh-80px)] overflow-hidden">
-  <section class="w-1/2 border-r overflow-auto bg-gray-50">
-    <Editor bind:this={editorRef} user={{ name, color }} />
+    <button
+      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
+      onclick={updatePreview}
+    >
+      Run Preview
+    </button>
+  </div>
+</header>
+
+<main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
+  <section class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden">
+    <div class="flex-1 overflow-auto">
+      <Editor bind:this={editorRef} user={{ name, color }} />
+    </div>
   </section>
 
-  <section class="w-1/2 overflow-auto p-8 bg-white prose max-w-none">
+  <section class="w-1/2 overflow-hidden bg-[#1e1e1e]">
     {#if preview.html}
       <iframe
         title="Screenplay Preview"
         srcdoc={preview.html}
-        class="w-full h-full border-none"
+        class="w-full h-full border-none bg-white"
       ></iframe>
     {:else}
-      <div class="p-8 text-gray-400 italic">
-        No content found. Try writing something and then click "Preview", press
-        "CTRL+s" or run command ":w", to see preview...
+      <div
+        class="flex flex-col items-center justify-center h-full text-gray-500 text-center p-12"
+      >
+        <p class="italic mb-2">No content rendered.</p>
+        <p class="text-xs opacity-70">
+          No content found. Try writing something and then click "RUN PREVIEW",
+          press
+          <kbd class="bg-gray-800 px-1 rounded text-gray-300">CTRL+S</kbd> or
+          run command
+          <kbd class="bg-gray-800 px-1 rounded text-gray-300">:w</kbd> to see preview...
+        </p>
       </div>
     {/if}
   </section>
