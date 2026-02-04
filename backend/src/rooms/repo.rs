@@ -113,11 +113,14 @@ impl Storage for DatabaseStorage {
 
     async fn delete_room(&self, room_id: &str) -> Result<(), Error> {
         // Assumes FK ON DELETE CASCADE to updates/snapshots.
-        sqlx::query!(r#"DELETE FROM rooms
-                        WHERE room_id = $1"#, room_id)
-            .execute(self.db.pool())
-            .await
-            .map_err(Error::from)?;
+        sqlx::query!(
+            r#"DELETE FROM rooms
+                        WHERE room_id = $1"#,
+            room_id
+        )
+        .execute(self.db.pool())
+        .await
+        .map_err(Error::from)?;
         Ok(())
     }
 

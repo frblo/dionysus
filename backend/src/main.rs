@@ -1,4 +1,5 @@
 mod app;
+mod auth;
 mod db;
 mod rooms;
 mod state;
