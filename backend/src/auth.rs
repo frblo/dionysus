@@ -6,6 +6,8 @@ use axum::routing::{get, post};
 
 use crate::state::AppState;
 
+pub use session_store::AuthSession;
+pub use session_store::Session;
 pub use session_store::SessionStore;
 
 pub fn router() -> Router<AppState> {

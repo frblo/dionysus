@@ -15,9 +15,12 @@
   import { userSettings } from "$lib/state/settings.svelte";
   import { generatePreview } from "$lib/state/preview.svelte";
 
+  // Decide on what protocol to use based on if its https or http
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${proto}//${location.host}/rooms/ws`;
+
   let {
     room = "demo-room-1",
-    serverUrl = "ws://localhost:8000/rooms/ws",
     user = {
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",
@@ -36,7 +39,7 @@
 
   onMount(() => {
     const ydoc = new Y.Doc();
-    provider = new WebsocketProvider(serverUrl, room, ydoc);
+    provider = new WebsocketProvider(wsUrl, room, ydoc);
     const ytext = ydoc.getText("codemirror");
 
     const undoManager = new Y.UndoManager(ytext);
@@ -85,7 +88,7 @@
     });
 
     provider.on("status", (e) => {
-      console.log(`[yws] ${e.status} ${serverUrl}/${room}`);
+      console.log(`[yws] ${e.status} ${wsUrl}/${room}`);
     });
 
     return () => {

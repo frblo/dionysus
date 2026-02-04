@@ -11,11 +11,13 @@ use crate::{
 
 #[derive(Serialize)]
 pub struct Me {
-    user_id: String
+    user_id: String,
 }
 
 pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
-    Json(Me { user_id: session.user_id })
+    Json(Me {
+        user_id: session.user_id,
+    })
 }
 
 #[derive(Deserialize)]
