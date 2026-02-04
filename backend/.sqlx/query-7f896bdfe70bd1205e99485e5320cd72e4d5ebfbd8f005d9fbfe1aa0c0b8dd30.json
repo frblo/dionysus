@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO room_updates (room_id, seq, bytes)\n            SELECT\n                $1 AS room_id,\n                ($2 + gs.i) AS seq,\n                u.bytes AS bytes\n            FROM\n                generate_series(0::bigint, $3 - 1::bigint) AS gs (i)\n                JOIN unnest($4::bytea[])\n                WITH ORDINALITY AS u (bytes, ord) ON u.ord = gs.i + 1\n            ORDER BY\n                gs.i",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8",
+        "ByteaArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f896bdfe70bd1205e99485e5320cd72e4d5ebfbd8f005d9fbfe1aa0c0b8dd30"
+}

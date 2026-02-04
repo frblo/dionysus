@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                covered_through,\n                bytes\n            FROM\n                room_snapshots\n            WHERE\n                room_id = $1\n                AND covered_through = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "covered_through",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "bytes",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "2b2bce8098e63b806d7facd84b6b9403ce662ac0c9487a0600535103642b2feb"
+}

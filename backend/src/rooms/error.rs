@@ -9,6 +9,9 @@ pub enum Error {
     #[error("already exists")]
     AlreadyExists,
 
+    #[error("invalid argument: {0}")]
+    InvalidArgument(String),
+
     #[error(transparent)]
     Decoding(#[from] yrs::encoding::read::Error),
 

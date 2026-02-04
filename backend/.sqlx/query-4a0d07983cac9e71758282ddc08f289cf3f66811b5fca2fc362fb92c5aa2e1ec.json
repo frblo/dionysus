@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO room_snapshots (room_id, covered_through, bytes)\n                VALUES ($1, $2, $3)\n            ON CONFLICT (room_id, covered_through)\n                DO UPDATE SET\n                    bytes = excluded.bytes",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4a0d07983cac9e71758282ddc08f289cf3f66811b5fca2fc362fb92c5aa2e1ec"
+}

@@ -152,7 +152,7 @@ impl RoomManager {
 
         tokio::spawn(async move {
             let mut since_snapshot = 0;
-            let mut last_seq = 0;
+            let mut last_seq;
 
             while let Some(update_bytes) = rx.recv().await {
                 match storage.append_update(&room_id_owned, &update_bytes).await {

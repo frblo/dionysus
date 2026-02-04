@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                covered_through,\n                octet_length(bytes)::bigint AS \"size_bytes!\"\n            FROM\n                room_snapshots\n            WHERE\n                room_id = $1\n            ORDER BY\n                covered_through ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "covered_through",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "e0f450f1b9bbcc99e25635e863897f140b597c47a9c242e4f8b992bface87a95"
+}
