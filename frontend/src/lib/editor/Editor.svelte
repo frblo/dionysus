@@ -1,9 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    defaultHighlightStyle,
-    syntaxHighlighting,
-  } from "@codemirror/language";
+  import { syntaxHighlighting } from "@codemirror/language";
+  import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
@@ -54,7 +52,7 @@
         extensions: [
           fountain(),
           syntaxHighlighting(fountainHighlightStyle),
-          syntaxHighlighting(defaultHighlightStyle),
+          basicDark,
           yCollab(ytext, provider.awareness, { undoManager }),
           vimExt,
           keymap.of([
