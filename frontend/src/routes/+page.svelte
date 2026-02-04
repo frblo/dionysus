@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Editor from "./Editor.svelte";
+  import Editor from "$lib/editor/Editor.svelte";
   import { userSettings } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
