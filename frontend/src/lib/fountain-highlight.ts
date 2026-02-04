@@ -2,6 +2,7 @@ import {
   HighlightStyle,
   LanguageSupport,
   StreamLanguage,
+  StringStream,
 } from "@codemirror/language";
 
 import { tags as t, Tag } from "@lezer/highlight";
@@ -32,7 +33,7 @@ const tokenTypes = {
   page_break: /^\={3,}$/,
 };
 
-function tokenize(stream, state) {
+function tokenize(stream: StringStream, state: any) {
   if (state.boneyard === true) {
     // End of boneyard block?
     if (stream.match("*/")) {
@@ -72,7 +73,7 @@ function tokenize(stream, state) {
 
   // If at beginning of line, test block-level tokens
   if (stream.sol()) {
-    for (const type in tokenTypes) { if (type === "bold") continue; // inline only
+    for (const type in tokenTypes) {
       if (tokenTypes[type].test(stream.string)) {
         if (type === "character") state.inDialogue = true;
         stream.skipToEnd();
@@ -86,7 +87,7 @@ function tokenize(stream, state) {
   return null;
 }
 
-function handleBlank(state, indentLevel) {
+function handleBlank(state: any, indentLevel: number) {
   state.inDialogue = false;
 }
 
