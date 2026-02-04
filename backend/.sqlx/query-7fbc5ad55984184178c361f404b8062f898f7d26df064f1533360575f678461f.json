@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    seq,\n                    bytes\n                FROM\n                    room_updates\n                WHERE\n                    room_id = $1\n                    AND seq >= $2\n                    AND ($3::bigint IS NULL\n                        OR seq <= $3)\n                ORDER BY\n                    seq ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "seq",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "bytes",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "7fbc5ad55984184178c361f404b8062f898f7d26df064f1533360575f678461f"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    covered_through,\n                    bytes\n                FROM\n                    room_snapshots\n                WHERE\n                    room_id = $1\n                    AND ($2::bigint IS NULL\n                        OR covered_through <= $2)\n                ORDER BY\n                    covered_through DESC\n                LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "covered_through",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "bytes",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "35e530003367711eb18d61af9293cad5e9aec79fca64efa91a9d07ef56efb589"
+}
