@@ -127,7 +127,7 @@ impl Storage for DatabaseStorage {
             SELECT
                 r.room_id,
                 r.last_seq,
-                s.covered_through AS snap_covered,
+                s.covered_through AS "snap_covered?",
                 s.size_bytes AS snap_size
             FROM
                 rooms r
