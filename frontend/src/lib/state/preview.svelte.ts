@@ -1,7 +1,7 @@
 import { preview_play } from "$lib/converter/pkg/converter";
 
 export const preview = $state({
-  html: ""
+  html: "",
 });
 
 export function generatePreview(script: string) {

@@ -2,15 +2,20 @@ use axum::{Json, extract::State, http::StatusCode, response::Redirect};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
 use rand::{Rng, distr::Alphanumeric};
 use serde::Deserialize;
+use serde::Serialize;
 
 use crate::{
     auth::session_store::{AuthSession, Session},
     state::AppState,
 };
 
-pub async fn me(AuthSession(_session): AuthSession) -> &'static str {
-    // Implicit 200
-    "Ok"
+#[derive(Serialize)]
+pub struct Me {
+    user_id: String
+}
+
+pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
+    Json(Me { user_id: session.user_id })
 }
 
 #[derive(Deserialize)]
@@ -22,7 +27,7 @@ pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(body): Json<LoginBody>,
-) -> Result<(CookieJar, Redirect), (StatusCode, &'static str)> {
+) -> Result<(CookieJar, StatusCode), (StatusCode, &'static str)> {
     if !(body.password == "manus27") {
         return Err((StatusCode::UNAUTHORIZED, "invalid credentials"));
     }
@@ -47,5 +52,5 @@ pub async fn login(
 
     let jar = jar.add(cookie);
 
-    Ok((jar, Redirect::to("/")))
+    Ok((jar, StatusCode::NO_CONTENT))
 }

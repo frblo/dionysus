@@ -46,8 +46,7 @@ impl FromRef<AppState> for SessionStore {
 
 #[derive(Clone)]
 pub struct Session {
-    /// Temp showing how actual data will be placed later
-    user_id: String,
+    pub user_id: String,
 }
 
 impl Session {
