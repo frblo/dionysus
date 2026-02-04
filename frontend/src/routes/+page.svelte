@@ -1,144 +1,105 @@
 <script lang="ts">
-  let title = $state("");
-  let typeSpeed = 150;
+  import Editor from "$lib/editor/Editor.svelte";
+  import { userSettings } from "$lib/state/settings.svelte";
+  import { preview } from "$lib/state/preview.svelte";
+  import init from "$lib/converter/pkg/converter";
+  import { onMount } from "svelte";
 
-  const titles: string[] = [
-    "dionysus",
-    "dionySUS",
-    "Dionysus",
-    "d10ny5u5",
-    "Διόνυσος",
-    "bacchus",
-    "dionȳsus",
-    "dionysos",
-    "dionysaur",
-    "di-oh-NO-sus",
-  ];
+  let name = $state("Anonymous" + Math.floor(Math.random() * 100));
+  let color = $state("#e83d84");
 
-  function titleUpdater() {
-    pickNewTitle();
-    setTimeout(titleUpdater, 5000 + Math.random() * 5000);
+  let editorRef: Editor | null = null;
+  function applyUserUpdate() {
+    editorRef?.updateUser({ name, color });
   }
 
-  function pickNewTitle() {
-    let nt = titles[Math.floor(Math.random() * titles.length)];
-    writeTitle(nt);
-  }
-
-  function writeTitle(newTitle: string) {
-    let i = 0;
-    deleteChar(titleLikeness());
-
-    function titleLikeness() {
-      let likeness = 0;
-      for (let i = 0; i < title.length && i < newTitle.length; i++) {
-        if (title[i] == newTitle[i]) likeness++;
-        else break;
-      }
-      return title.length - likeness;
-    }
-
-    function deleteChar(toRemove: number) {
-      if (toRemove > 0) {
-        title = title.slice(0, title.length - 1);
-        setTimeout(() => deleteChar(toRemove - 1), typeSpeed);
-      } else {
-        i = title.length;
-        writeChar();
-      }
-    }
-
-    function writeChar() {
-      if (i >= newTitle.length) return;
-      title += newTitle[i];
-      i++;
-      if (i < newTitle.length) setTimeout(writeChar, typeSpeed);
+  function updatePreview() {
+    if (editorRef) {
+      editorRef.updatePreview();
     }
   }
 
-  writeTitle(titles[0]);
-  setTimeout(titleUpdater, 5000 + Math.random() * 5000);
+  onMount(async () => {
+    await init();
+    updatePreview();
+  });
 </script>
 
-<main
-  class="flex flex-col items-center justify-center min-h-screen bg-[#1e1e1e] text-gray-100 p-4"
+<header
+  class="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-gray-700 shadow-md z-10"
 >
-  <div class="text-center mb-12">
-    <h1 class="title-text">
-      {title}<span class="cursor">_</span>
-    </h1>
-  </div>
-
-  <form
-    action="/auth/login"
-    method="post"
-    class="flex flex-col gap-6 w-full max-w-xs"
-  >
-    <div class="flex flex-col gap-2">
+  <div class="flex items-center gap-4">
+    <div class="flex flex-col">
       <label
-        for="password"
-        class="text-[10px] uppercase font-bold text-gray-500 tracking-widest ml-1"
+        for="user-name"
+        class="text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1 tracking-wider"
+        >User Identity</label
       >
-        Password
-      </label>
-      <input
-        type="text"
-        id="password"
-        name="password"
-        class="bg-[#252526] border border-gray-700 rounded px-4 py-3 text-white font-mono focus:outline-none focus:border-blue-500 transition-colors"
-      />
+      <div class="flex gap-2">
+        <textarea
+          id="user-name"
+          bind:value={name}
+          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-32"
+        ></textarea>
+        <textarea
+          bind:value={color}
+          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-24 font-mono"
+        ></textarea>
+      </div>
     </div>
 
-    <input type="submit" class="login-button" value="Login" />
-  </form>
+    <button
+      class="mt-5 px-3 py-1 rounded border border-gray-500 text-gray-300 text-xs font-semibold hover:bg-gray-700 hover:text-white transition h-8"
+      onclick={applyUserUpdate}
+    >
+      Update
+    </button>
+  </div>
+
+  <div class="flex items-center gap-2 mt-5">
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
+    >
+      {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
+    </button>
+
+    <button
+      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
+      onclick={updatePreview}
+    >
+      Run Preview
+    </button>
+  </div>
+</header>
+
+<main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
+  <section class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden">
+    <div class="flex-1 overflow-auto">
+      <Editor bind:this={editorRef} user={{ name, color }} />
+    </div>
+  </section>
+
+  <section class="w-1/2 overflow-hidden bg-[#1e1e1e]">
+    {#if preview.html}
+      <iframe
+        title="Screenplay Preview"
+        srcdoc={preview.html}
+        class="w-full h-full border-none bg-white"
+      ></iframe>
+    {:else}
+      <div
+        class="flex flex-col items-center justify-center h-full text-gray-500 text-center p-12"
+      >
+        <p class="italic mb-2">No content rendered.</p>
+        <p class="text-xs opacity-70">
+          No content found. Try writing something and then click "RUN PREVIEW",
+          press
+          <kbd class="bg-gray-800 px-1 rounded text-gray-300">CTRL+S</kbd> or
+          run command
+          <kbd class="bg-gray-800 px-1 rounded text-gray-300">:w</kbd> to see preview...
+        </p>
+      </div>
+    {/if}
+  </section>
 </main>
-
-<style>
-  .title-text {
-    font-family: "Courier New", Courier, monospace;
-    font-size: clamp(
-      2rem,
-      10vw,
-      60px
-    ); /* Responsive sizing: small on mobile, 60px on desktop */
-    font-weight: bold;
-    letter-spacing: -0.05em;
-    height: 1.2em; /* Prevents layout jump when title is empty */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .login-button {
-    font-family: "Courier New", Courier, monospace;
-    font-size: 18px;
-    padding: 12px 32px;
-    border: 2px solid #4a4a4a;
-    border-radius: 4px;
-    color: #a0a0a0;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    letter-spacing: 2px;
-  }
-
-  .login-button:hover {
-    background-color: #333333;
-    color: #ffffff;
-    border-color: #a0a0a0;
-  }
-
-  .cursor {
-    animation: blink 1s step-end infinite;
-    margin-left: 4px;
-  }
-
-  @keyframes blink {
-    from,
-    to {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0;
-    }
-  }
-</style>
