@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                r.room_id,\n                r.last_seq,\n                s.covered_through AS \"snap_covered?\",\n                s.size_bytes AS snap_size\n            FROM\n                rooms r\n                LEFT JOIN LATERAL (\n                    SELECT\n                        covered_through,\n                        octet_length(bytes)::bigint AS size_bytes\n                    FROM\n                        room_snapshots\n                    WHERE\n                        room_id = r.room_id\n                    ORDER BY\n                        covered_through DESC\n                    LIMIT 1) s ON TRUE\n            ORDER BY\n                r.room_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "room_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_seq",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "snap_covered?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "snap_size",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "5c40c5497fdb918631ad43b293843f57d7cfed8ae091b5ff6e224bb64921654c"
+}
