@@ -4,10 +4,11 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::state::AppState;
 use crate::ws;
+use crate::{auth::AuthSession, state::AppState};
 
 pub async fn ws_handler(
+    AuthSession(session): AuthSession,
     ws: WebSocketUpgrade,
     Path(room_id): Path<String>,
     State(state): State<AppState>,

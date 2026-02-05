@@ -1,6 +1,12 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
+
   let title = $state("");
   let typeSpeed = 150;
+
+  let password = $state("");
+  let error = $state("");
 
   const titles: string[] = [
     "dionysus",
@@ -56,6 +62,27 @@
     }
   }
 
+  async function submit() {
+    error = "";
+
+    const next = page.url.searchParams.get("next") ?? "/";
+
+    const r = await fetch("/auth/login", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    if (r.ok) {
+      await goto(next);
+    } else if (r.status === 401) {
+      error = "Invalid password";
+    } else {
+      error = "Login failed";
+    }
+  }
+
   writeTitle(titles[0]);
   setTimeout(titleUpdater, 5000 + Math.random() * 5000);
 </script>
@@ -70,8 +97,7 @@
   </div>
 
   <form
-    action="/auth/login"
-    method="post"
+    onsubmit={(e) => (e.preventDefault(), submit())}
     class="flex flex-col gap-6 w-full max-w-xs"
   >
     <div class="flex flex-col gap-2">
@@ -82,28 +108,29 @@
         Password
       </label>
       <input
-        type="text"
+        type="password"
         id="password"
-        name="password"
+        autocomplete="current-password"
+        bind:value={password}
         class="bg-[#252526] border border-gray-700 rounded px-4 py-3 text-white font-mono focus:outline-none focus:border-blue-500 transition-colors"
       />
     </div>
 
     <input type="submit" class="login-button" value="Login" />
+
+    {#if error}
+      <p class="text-red-400 text-sm">{error}</p>
+    {/if}
   </form>
 </main>
 
 <style>
   .title-text {
     font-family: "Courier New", Courier, monospace;
-    font-size: clamp(
-      2rem,
-      10vw,
-      60px
-    ); /* Responsive sizing: small on mobile, 60px on desktop */
+    font-size: clamp(2rem, 10vw, 60px);
     font-weight: bold;
     letter-spacing: -0.05em;
-    height: 1.2em; /* Prevents layout jump when title is empty */
+    height: 1.2em;
     display: flex;
     align-items: center;
     justify-content: center;

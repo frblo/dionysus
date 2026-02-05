@@ -6,7 +6,7 @@ import type * as Y from "yjs";
 
 export const vimCompartment = new Compartment();
 
-export function createVim(undoManager: Y.UndoManager, runPreview: (() => void)) {
+export function createVim(undoManager: Y.UndoManager, runPreview: () => void) {
   // Override `:w` command to show preview
   Vim.defineEx("write", "w", () => {
     runPreview();
