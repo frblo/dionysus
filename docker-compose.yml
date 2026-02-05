@@ -1,18 +1,22 @@
 services:
   postgres:
-    image: postgres:16
+    image: docker.io/library/postgres:16
     container_name: local-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: app_dev
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
   backend:
     build:
       context: backend
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/app_dev
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
 
 volumes:
   pgdata:
