@@ -1,8 +1,18 @@
-FROM rust:1.67
+# == Build stage ==
+FROM rust:1.93 as builder
 
-WORKDIR /backend
+
+WORKDIR /usr/src/dionysus/backend
+
 COPY . .
 
 RUN cargo build --release
 
-CMD [ "./target/release/backend" ]
+# == Running stage ==
+FROM debian:trixie-slim as runtime
+
+WORKDIR /usr/local/bin/
+
+COPY --from=builder /usr/src/dionysus/backend/target/release/backend .
+
+CMD [ "./backend" ]
