@@ -8,6 +8,7 @@ services:
       POSTGRES_DB: app_dev
     volumes:
       - pgdata:/var/lib/postgresql/data
+
   backend:
     build:
       context: backend
@@ -17,6 +18,14 @@ services:
       - postgres
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
