@@ -1,19 +1,19 @@
 services:
   postgres:
-    image: docker.io/library/postgres:16
+    image: docker.io/library/postgres:18
     container_name: local-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: app_dev
+      POSTGRES_DB: dionysus_db
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
 
   backend:
     build:
       context: backend
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/app_dev
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dionysus_db
     depends_on:
       - postgres
     ports:
