@@ -17,6 +17,10 @@ const SERVE_FRONTEND_ARG: &str = "serve";
 async fn main() -> anyhow::Result<()> {
     let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
     let pool = PgPool::connect(&dotenvy::var("DATABASE_URL")?).await?;
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to apply database migrations");
 
     let state = state::AppState::new(Db::new(pool)).await;
 
