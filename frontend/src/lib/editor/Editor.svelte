@@ -113,6 +113,14 @@
   export function getContent() {
     return view ? view.state.doc.toString() : "";
   }
+
+  export function scrollIntoView(pos: number) {
+    view?.dispatch({
+      selection: { anchor: pos, head: pos },
+      scrollIntoView: true,
+    });
+    view?.focus();
+  }
 </script>
 
 <div bind:this={editorEl} class="editor"></div>
