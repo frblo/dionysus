@@ -13,7 +13,7 @@ async-trait = "0.1.89"
 # web
 axum = "0.8"
 axum-extra = { version = "0.12.5", features = [ "cookie" ] }
-tower-http = "0.6.8"
+tower-http = { version = "0.6.8", features = [ "fs" ]}
 
 # database
 sqlx = { version = "0.8", features = [

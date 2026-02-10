@@ -1,9 +1,6 @@
 import type { LayoutLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
 
-export const prerender = false;
-export const ssr = false;
-
 export const load: LayoutLoad = async ({ fetch, url }) => {
   const r = await fetch("/auth/me", {
     method: "GET",
