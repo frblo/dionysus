@@ -7,6 +7,7 @@
 
 <svelte:head>
   <link rel="icon" href={favicon} />
+  <title>Dionysus</title>
 </svelte:head>
 
 <div
