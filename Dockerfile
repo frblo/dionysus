@@ -18,6 +18,8 @@ COPY frontend .
 RUN rm -rf src/lib/converter
 COPY --from=wasm_builder /usr/src/dionysus/frontend/wasm/pkg src/lib/converter/pkg/
 
+RUN npm run build
+
 # == Backend Build stage ==
 FROM rust:1.93 as back-builder
 
