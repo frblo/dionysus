@@ -4,6 +4,7 @@
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
+  import { ExclamationCircle } from "svelte-bootstrap-icons";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
@@ -73,33 +74,51 @@
   </div>
 </header>
 
-<main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
-  <section class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden">
-    <div class="flex-1 overflow-auto">
-      <Editor bind:this={editorRef} user={{ name, color }} />
+<div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
+  <aside
+    class="w-12 bg-[#333333] border-r border-gray-700 flex flex-col items-center py-4 gap-4"
+  >
+    <div class="mt-auto flex flex-col items-center gap-4">
+      <a href="https://github.com/frblo/dionysus/issues" target="_blank">
+        <button
+          class="p-2 text-gray-400 hover:text-white transition-colors"
+          title="Report issue"
+        >
+          <ExclamationCircle />
+        </button>
+      </a>
     </div>
-  </section>
-
-  <section class="w-1/2 overflow-hidden bg-[#1e1e1e]">
-    {#if preview.html}
-      <iframe
-        title="Screenplay Preview"
-        srcdoc={preview.html}
-        class="w-full h-full border-none bg-white"
-      ></iframe>
-    {:else}
-      <div
-        class="flex flex-col items-center justify-center h-full text-gray-500 text-center p-12"
-      >
-        <p class="italic mb-2">No content rendered.</p>
-        <p class="text-xs opacity-70">
-          No content found. Try writing something and then click "RUN PREVIEW",
-          press
-          <kbd class="bg-gray-800 px-1 rounded text-gray-300">CTRL+S</kbd> or
-          run command
-          <kbd class="bg-gray-800 px-1 rounded text-gray-300">:w</kbd> to see preview...
-        </p>
+  </aside>
+  <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
+    <section
+      class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
+    >
+      <div class="flex-1 overflow-auto">
+        <Editor bind:this={editorRef} user={{ name, color }} />
       </div>
-    {/if}
-  </section>
-</main>
+    </section>
+
+    <section class="w-1/2 overflow-hidden bg-[#1e1e1e]">
+      {#if preview.html}
+        <iframe
+          title="Screenplay Preview"
+          srcdoc={preview.html}
+          class="w-full h-full border-none bg-white"
+        ></iframe>
+      {:else}
+        <div
+          class="flex flex-col items-center justify-center h-full text-gray-500 text-center p-12"
+        >
+          <p class="italic mb-2">No content rendered.</p>
+          <p class="text-xs opacity-70">
+            No content found. Try writing something and then click "RUN
+            PREVIEW", press
+            <kbd class="bg-gray-800 px-1 rounded text-gray-300">CTRL+S</kbd> or
+            run command
+            <kbd class="bg-gray-800 px-1 rounded text-gray-300">:w</kbd> to see preview...
+          </p>
+        </div>
+      {/if}
+    </section>
+  </main>
+</div>
