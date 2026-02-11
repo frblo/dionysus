@@ -4,10 +4,13 @@
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
-  import { ExclamationCircle } from "svelte-bootstrap-icons";
+  import { ExclamationCircle, FileText } from "svelte-bootstrap-icons";
+  import { slide, fade } from "svelte/transition";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
+  let showOutline = $state(false);
+  let scenes = $state<{ name: string; pos: number }[]>([]);
 
   let editorRef: Editor | null = null;
   function applyUserUpdate() {
@@ -18,6 +21,18 @@
     if (editorRef) {
       editorRef.updatePreview();
     }
+  }
+
+  function toggleOutline() {
+    if (!showOutline && editorRef) {
+      scenes = editorRef.getSceneList();
+    }
+    showOutline = !showOutline;
+  }
+
+  function handleSceneClick(pos: number) {
+    editorRef?.scrollIntoView(pos);
+    showOutline = false;
   }
 
   onMount(async () => {
@@ -75,9 +90,18 @@
 </header>
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
+  <!-- Side bar -->
   <aside
     class="w-12 bg-[#333333] border-r border-gray-700 flex flex-col items-center py-4 gap-4"
   >
+    <button
+      class="p-2 text-gray-400 hover:text-white transition-colors"
+      title="Document outline"
+      onclick={toggleOutline}
+    >
+      <FileText />
+    </button>
+
     <div class="mt-auto flex flex-col items-center gap-4">
       <a href="https://github.com/frblo/dionysus/issues" target="_blank">
         <button
@@ -89,6 +113,37 @@
       </a>
     </div>
   </aside>
+  {#if showOutline}
+    <div class="fixed inset-0 z-20" onclick={() => (showOutline = false)}></div>
+
+    <aside
+      class="absolute top-19 left-12 bottom-0 w-72 bg-[#252526] border-r border-gray-700 flex flex-col z-30 shadow-2xl"
+      transition:slide={{ axis: "x", duration: 200 }}
+    >
+      <div
+        class="px-4 py-3 border-b border-gray-700 flex justify-between items-center"
+      >
+        <span class="text-xs font-bold uppercase tracking-wider text-gray-400"
+          >Outline</span
+        >
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scrollbar">
+        {#if scenes.length === 0}
+          <p class="p-4 text-xs text-gray-500 italic">No scenes found</p>
+        {:else}
+          {#each scenes as scene, index}
+            <button
+              class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#37373d] hover:text-white transition-colors truncate border-l-2 border-transparent focus:border-blue-500 outline-none"
+              onclick={() => handleSceneClick(scene.pos)}
+            >
+              {index}. {scene.name || "Untitled Scene"}
+            </button>
+          {/each}
+        {/if}
+      </div>
+    </aside>
+  {/if}
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
