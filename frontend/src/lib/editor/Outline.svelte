@@ -1,7 +1,8 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
+  import { XSquare } from "svelte-bootstrap-icons";
 
-  let { scenes = [], handleSceneClick } = $props();
+  let { scenes = [], handleSceneClick, toggleOutline } = $props();
 </script>
 
 <aside
@@ -12,7 +13,12 @@
     class="px-4 py-3 border-b border-gray-700 flex justify-between items-center"
   >
     <span class="text-xs font-bold uppercase tracking-wider text-gray-400"
-      >Outline</span
+      >Scenes Outline</span
+    >
+    <button
+      class="p-2 text-gray-400 hover:text-white transition-colors"
+      onclick={toggleOutline}
+      type="button"><XSquare /></button
     >
   </div>
 

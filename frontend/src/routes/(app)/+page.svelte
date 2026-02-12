@@ -114,8 +114,15 @@
     </div>
   </aside>
   {#if showOutline}
-    <div class="fixed inset-0 z-20" onclick={() => (showOutline = false)}></div>
-    <Outline {scenes} {handleSceneClick} />
+    <!-- These are handled inside the component -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div
+      class="fixed inset-0 z-20"
+      role="region"
+      onclick={() => (showOutline = false)}
+    ></div>
+    <Outline {scenes} {handleSceneClick} {toggleOutline} />
   {/if}
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
