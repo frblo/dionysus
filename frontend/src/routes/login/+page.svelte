@@ -87,6 +87,10 @@
   setTimeout(titleUpdater, 5000 + Math.random() * 5000);
 </script>
 
+<svelte:head>
+  <title>Login - Dionysus</title>
+</svelte:head>
+
 <main
   class="flex flex-col items-center justify-center min-h-screen bg-[#1e1e1e] text-gray-100 p-4"
 >
