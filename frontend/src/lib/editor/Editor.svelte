@@ -82,6 +82,7 @@
             },
           ]),
           EditorView.lineWrapping,
+          EditorView.contentAttributes.of({ spellcheck: "true" }),
           basicSetup,
         ],
       }),
