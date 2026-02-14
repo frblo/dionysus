@@ -4,7 +4,9 @@
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
-  import { ExclamationCircle } from "svelte-bootstrap-icons";
+  import { Download, ExclamationCircle } from "svelte-bootstrap-icons";
+  import { exportMenuState, ExportTypes } from "$lib/export/export.svelte";
+  import ExportMenu from "$lib/export/ExportMenu.svelte";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
@@ -17,6 +19,18 @@
   function updatePreview() {
     if (editorRef) {
       editorRef.updatePreview();
+    }
+  }
+
+  function exportFile(type: ExportTypes) {
+    if (editorRef) {
+      editorRef.exportFile(type);
+    }
+  }
+
+  function closeMenus() {
+    if (exportMenuState.isOpen) {
+      exportMenuState.isOpen = false;
     }
   }
 
@@ -71,6 +85,15 @@
     >
       Run Preview
     </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => (exportMenuState.isOpen = true)}
+      title="Export"
+    >
+      <Download />
+    </button>
+    <ExportMenu {exportFile} />
   </div>
 </header>
 

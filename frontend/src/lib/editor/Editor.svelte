@@ -14,6 +14,7 @@
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
   import { generatePreview } from "$lib/state/preview.svelte";
+  import { exportToFile, type ExportTypes } from "$lib/export/export.svelte";
 
   // Decide on what protocol to use based on if its https or http
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -35,6 +36,11 @@
   export function updatePreview() {
     const script = getContent();
     generatePreview(script);
+  }
+
+  export function exportFile(type: ExportTypes) {
+    const script = getContent();
+    exportToFile(script, type);
   }
 
   onMount(() => {
