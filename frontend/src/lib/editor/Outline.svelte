@@ -31,7 +31,8 @@
           class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#37373d] hover:text-white transition-colors truncate border-l-2 border-transparent focus:border-blue-500 outline-none"
           onclick={() => handleSceneClick(scene.pos)}
         >
-          {index}. {scene.name || "Untitled Scene"}
+          <span class="text-gray-600">{index + 1}.</span>
+          {scene.name || "Untitled Scene"}
         </button>
       {/each}
     {/if}
