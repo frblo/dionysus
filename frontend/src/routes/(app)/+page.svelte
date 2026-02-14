@@ -28,12 +28,6 @@
     }
   }
 
-  function closeMenus() {
-    if (exportMenuState.isOpen) {
-      exportMenuState.isOpen = false;
-    }
-  }
-
   onMount(async () => {
     await init();
     updatePreview();
@@ -88,7 +82,7 @@
 
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => (exportMenuState.isOpen = true)}
+      onclick={() => (exportMenuState.isOpen = !exportMenuState.isOpen)}
       title="Export"
     >
       <Download />
