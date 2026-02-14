@@ -1,4 +1,3 @@
-use js_sys::Uint8Array;
 use rustwell::{export_html, export_pdf, parse};
 use wasm_bindgen::prelude::*;
 
@@ -17,10 +16,11 @@ pub fn generate_html(fountain: String) -> Result<String, JsValue> {
 
 /// Runs the Rustwell fountain parser and compiles the script into stylized pdf.
 #[wasm_bindgen]
-pub fn generate_pdf(fountain: String) -> Result<Uint8Array, JsValue> {
+pub fn generate_pdf(fountain: String) -> Result<Vec<u8>, JsValue> {
     let parsed = parse(fountain);
     let mut buffer = Vec::new();
     export_pdf(&parsed, &mut buffer, false);
 
-    Ok(Uint8Array::from(&buffer[..]))
+    // Ok(Uint8Array::from(&buffer[..]))
+    Ok(buffer)
 }
