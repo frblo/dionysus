@@ -1,7 +1,7 @@
 <script lang="ts">
   import Editor from "$lib/editor/Editor.svelte";
   import Outline from "$lib/editor/Outline.svelte";
-  import { userSettings } from "$lib/state/settings.svelte";
+  import { pageSettings, userSettings } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
@@ -9,7 +9,7 @@
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
-  let showOutline = $state(false);
+
   let scenes = $state<{ name: string; pos: number }[]>([]);
 
   let editorRef: Editor | null = null;
@@ -24,15 +24,15 @@
   }
 
   function toggleOutline() {
-    if (!showOutline && editorRef) {
+    if (!pageSettings.outlineOpen && editorRef) {
       scenes = editorRef.getSceneList();
     }
-    showOutline = !showOutline;
+    pageSettings.outlineOpen = !pageSettings.outlineOpen;
   }
 
   function handleSceneClick(pos: number) {
     editorRef?.scrollIntoView(pos);
-    showOutline = false;
+    pageSettings.outlineOpen = false;
   }
 
   onMount(async () => {
@@ -113,17 +113,7 @@
       </a>
     </div>
   </aside>
-  {#if showOutline}
-    <!-- These are handled inside the component -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div
-      class="fixed inset-0 z-20"
-      role="region"
-      onclick={() => (showOutline = false)}
-    ></div>
-    <Outline {scenes} {handleSceneClick} {toggleOutline} />
-  {/if}
+  <Outline {scenes} {handleSceneClick} {toggleOutline} />
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
