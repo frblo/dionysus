@@ -1,4 +1,4 @@
-import { preview_play } from "$lib/converter/pkg/converter";
+import { generate_html } from "$lib/converter/pkg/converter";
 
 export const preview = $state({
   html: "",
@@ -9,5 +9,5 @@ export function generatePreview(script: string) {
     preview.html = "";
     return;
   }
-  preview.html = preview_play(script);
+  preview.html = generate_html(script);
 }
