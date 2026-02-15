@@ -1,13 +1,16 @@
 <script lang="ts">
   import Editor from "$lib/editor/Editor.svelte";
-  import { userSettings } from "$lib/state/settings.svelte";
+  import Outline from "$lib/editor/Outline.svelte";
+  import { editorViewSettings, userSettings } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
-  import { ExclamationCircle } from "svelte-bootstrap-icons";
+  import { ExclamationCircle, FileText } from "svelte-bootstrap-icons";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
+
+  let scenes = $state<{ name: string; pos: number }[]>([]);
 
   let editorRef: Editor | null = null;
   function applyUserUpdate() {
@@ -18,6 +21,18 @@
     if (editorRef) {
       editorRef.updatePreview();
     }
+  }
+
+  function toggleOutline() {
+    if (!editorViewSettings.outlineOpen && editorRef) {
+      scenes = editorRef.getSceneList();
+    }
+    editorViewSettings.outlineOpen = !editorViewSettings.outlineOpen;
+  }
+
+  function handleSceneClick(pos: number) {
+    editorRef?.scrollIntoView(pos);
+    editorViewSettings.outlineOpen = false;
   }
 
   onMount(async () => {
@@ -75,9 +90,18 @@
 </header>
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
+  <!-- Side bar -->
   <aside
     class="w-12 bg-[#333333] border-r border-gray-700 flex flex-col items-center py-4 gap-4"
   >
+    <button
+      class="p-2 text-gray-400 hover:text-white transition-colors"
+      title="Document outline"
+      onclick={toggleOutline}
+    >
+      <FileText />
+    </button>
+
     <div class="mt-auto flex flex-col items-center gap-4">
       <a href="https://github.com/frblo/dionysus/issues" target="_blank">
         <button
@@ -89,6 +113,7 @@
       </a>
     </div>
   </aside>
+  <Outline {scenes} {handleSceneClick} {toggleOutline} />
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"

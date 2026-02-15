@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { syntaxHighlighting } from "@codemirror/language";
+  import { syntaxHighlighting, syntaxTree } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
@@ -112,6 +112,37 @@
 
   export function getContent() {
     return view ? view.state.doc.toString() : "";
+  }
+
+  export function getSceneList() {
+    let scenes: { name: string; pos: number }[] = [];
+    if (!view || !view.state) {
+      return scenes;
+    }
+    const state = view.state;
+    const tree = syntaxTree(state);
+    tree.iterate({
+      enter(node) {
+        if (node.name === "scene_heading") {
+          scenes.push({
+            name: state.sliceDoc(node.from, node.to),
+            pos: node.from,
+          });
+        }
+      },
+    });
+    return scenes;
+  }
+
+  export function scrollIntoView(pos: number) {
+    if (!view) {
+      return;
+    }
+    view.dispatch({
+      selection: { anchor: pos, head: pos },
+      scrollIntoView: true,
+    });
+    view.focus();
   }
 </script>
 
