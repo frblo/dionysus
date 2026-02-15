@@ -1,7 +1,7 @@
 <script lang="ts">
   import Editor from "$lib/editor/Editor.svelte";
   import Outline from "$lib/editor/Outline.svelte";
-  import { pageSettings, userSettings } from "$lib/state/settings.svelte";
+  import { editorViewSettings, userSettings } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
@@ -24,15 +24,15 @@
   }
 
   function toggleOutline() {
-    if (!pageSettings.outlineOpen && editorRef) {
+    if (!editorViewSettings.outlineOpen && editorRef) {
       scenes = editorRef.getSceneList();
     }
-    pageSettings.outlineOpen = !pageSettings.outlineOpen;
+    editorViewSettings.outlineOpen = !editorViewSettings.outlineOpen;
   }
 
   function handleSceneClick(pos: number) {
     editorRef?.scrollIntoView(pos);
-    pageSettings.outlineOpen = false;
+    editorViewSettings.outlineOpen = false;
   }
 
   onMount(async () => {

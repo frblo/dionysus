@@ -2,6 +2,6 @@ export const userSettings = $state({
   vimEnabled: true,
 });
 
-export const pageSettings = $state({
+export const editorViewSettings = $state({
   outlineOpen: false,
 });
