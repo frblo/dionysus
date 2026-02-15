@@ -115,23 +115,23 @@
   }
 
   export function getSceneList() {
-    let characters: { name: string; pos: number }[] = [];
+    let scenes: { name: string; pos: number }[] = [];
     if (!view || !view.state) {
-      return characters;
+      return scenes;
     }
     const state = view.state;
     const tree = syntaxTree(state);
     tree.iterate({
       enter(node) {
         if (node.name === "scene_heading") {
-          characters.push({
+          scenes.push({
             name: state.sliceDoc(node.from, node.to),
             pos: node.from,
           });
         }
       },
     });
-    return characters;
+    return scenes;
   }
 
   export function scrollIntoView(pos: number) {
