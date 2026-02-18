@@ -33,7 +33,7 @@ chrono = { version = "0.4", features = [ "serde" ] }
 # error handling / config
 anyhow = "1"
 thiserror = "2"
-dotenvy = "0.15"
+config = { version = "0.15.19", features = ["toml"] }
 
 # crdt
 yrs = "=0.18.8" # pinned to compatable version of yrs-axum

@@ -96,4 +96,4 @@ COPY --from=front-builder /usr/src/dionysus/frontend/build ./build
 COPY backend/config/default.toml ./config/default.toml
 
 EXPOSE 8000
-CMD [ "./backend", "serve" ]
+CMD [ "./backend" ]
