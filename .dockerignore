@@ -1,0 +1,17 @@
+target/
+**/target/
+
+dist/
+**/dist/
+
+build/
+**/build/
+
+node_modules/
+**/node_modules/
+
+.git/
+.gitignore
+
+docker-compose.yml
+compose.yml

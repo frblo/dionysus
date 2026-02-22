@@ -3,18 +3,18 @@ services:
     image: docker.io/library/postgres:18
     container_name: local-postgres
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: dionysus
+      POSTGRES_PASSWORD: dionysus
+      POSTGRES_DB: dionysus
     volumes:
       - pgdata:/var/lib/postgresql
   dionysus:
     build:
       context: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - DIONYSUS_DATABASE__URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DIONYSUS_DATABASE__URL=postgres://dionysus:dionysus@postgres:5432/dionysus
     depends_on:
       - postgres
 

@@ -11,6 +11,7 @@ FROM rust:${RUST_VERSION}-slim AS rust-tools
 WORKDIR /app
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
+    rustup target add wasm32-unknown-unknown && \
     cargo install --locked cargo-chef wasm-pack
 
 # ============================
@@ -31,13 +32,13 @@ ENV CARGO_TARGET_DIR=/app/target/wasm
 COPY --from=wasm-planner /app/wasm/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    cargo chef cook --release --recipe-path recipe.json
+    cargo chef cook --release --target wasm32-unknown-unknown
 
 # 3) Build the actual wasm pkg
 COPY frontend/src/lib/converter/ ./
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    wasm-pack build --target web
+    wasm-pack build --target web --release
 
 # ============================
 # Frontend Builder Stage
@@ -93,7 +94,9 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /usr/local/bin/
 COPY --from=back-builder /app/backend/target/release/backend ./backend
 COPY --from=front-builder /usr/src/dionysus/frontend/build ./build
-COPY backend/config/default.toml ./config/default.toml
 
+# If configured to something else you should set it manually when used.
+# e.g. by `-p` flag or ports in a compose file.
 EXPOSE 8000
+
 CMD [ "./backend" ]
