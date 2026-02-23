@@ -10,8 +10,6 @@
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
 
-  let scenes = $state<{ name: string; pos: number }[]>([]);
-
   let editorRef: Editor | null = null;
   function applyUserUpdate() {
     editorRef?.updateUser({ name, color });
@@ -24,15 +22,11 @@
   }
 
   function toggleOutline() {
-    if (!editorViewSettings.outlineOpen && editorRef) {
-      scenes = editorRef.getSceneList();
-    }
     editorViewSettings.outlineOpen = !editorViewSettings.outlineOpen;
   }
 
   function handleSceneClick(pos: number) {
     editorRef?.scrollIntoView(pos);
-    editorViewSettings.outlineOpen = false;
   }
 
   onMount(async () => {
@@ -113,7 +107,7 @@
       </a>
     </div>
   </aside>
-  <Outline {scenes} {handleSceneClick} {toggleOutline} />
+  <Outline {handleSceneClick} {toggleOutline} />
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"

@@ -2,8 +2,9 @@
   import { slide } from "svelte/transition";
   import { XSquare } from "svelte-bootstrap-icons";
   import { editorViewSettings } from "$lib/state/settings.svelte";
+  import { scenes } from "$lib/state/scenes.svelte";
 
-  let { scenes = [], handleSceneClick, toggleOutline } = $props();
+  let { handleSceneClick, toggleOutline } = $props();
 </script>
 
 {#if editorViewSettings.outlineOpen}
@@ -25,10 +26,10 @@
     </div>
 
     <div class="flex-1 overflow-y-auto custom-scrollbar">
-      {#if scenes.length === 0}
+      {#if scenes.list.length === 0}
         <p class="p-4 text-xs text-gray-500 italic">No scenes found</p>
       {:else}
-        {#each scenes as scene, index}
+        {#each scenes.list as scene, index}
           <button
             class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#37373d] hover:text-white transition-colors truncate border-l-2 border-transparent focus:border-blue-500 outline-none"
             onclick={() => handleSceneClick(scene.pos)}

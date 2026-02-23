@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { syntaxHighlighting, syntaxTree } from "@codemirror/language";
+  import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
@@ -14,6 +14,7 @@
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
   import { generatePreview } from "$lib/state/preview.svelte";
+  import { sceneScanner } from "$lib/state/scenes.svelte";
 
   // Decide on what protocol to use based on if its https or http
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -83,6 +84,7 @@
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
+          sceneScanner,
           basicSetup,
         ],
       }),
@@ -112,26 +114,6 @@
 
   export function getContent() {
     return view ? view.state.doc.toString() : "";
-  }
-
-  export function getSceneList() {
-    let scenes: { name: string; pos: number }[] = [];
-    if (!view || !view.state) {
-      return scenes;
-    }
-    const state = view.state;
-    const tree = syntaxTree(state);
-    tree.iterate({
-      enter(node) {
-        if (node.name === "scene_heading") {
-          scenes.push({
-            name: state.sliceDoc(node.from, node.to),
-            pos: node.from,
-          });
-        }
-      },
-    });
-    return scenes;
   }
 
   export function scrollIntoView(pos: number) {
