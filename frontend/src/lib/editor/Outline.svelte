@@ -7,20 +7,8 @@
 </script>
 
 {#if editorViewSettings.outlineOpen}
-  <!-- Accessibility (a11y) warnings saying that there needs to be
-       a way to exit the opened menu without using the mouse. This
-       is implemented, but the warnings persist - hence why they've
-       been disabled.
-  -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    class="fixed inset-0 z-20"
-    role="region"
-    onclick={() => (editorViewSettings.outlineOpen = false)}
-  ></div>
   <aside
-    class="absolute top-19 left-12 bottom-0 w-72 bg-[#252526] border-r border-gray-700 flex flex-col z-30 shadow-2xl"
+    class="relative h-full w-72 bg-[#252526] border-r border-gray-700 flex flex-col z-30"
     transition:slide={{ axis: "x", duration: 200 }}
   >
     <div
