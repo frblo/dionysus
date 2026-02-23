@@ -1,10 +1,13 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { XSquare } from "svelte-bootstrap-icons";
   import { editorViewSettings } from "$lib/state/settings.svelte";
   import { scenes } from "$lib/state/scenes.svelte";
 
-  let { handleSceneClick, toggleOutline } = $props();
+  let { editorRef } = $props();
+
+  function handleSceneClick(pos: number) {
+    editorRef?.scrollIntoView(pos);
+  }
 </script>
 
 {#if editorViewSettings.outlineOpen}
@@ -17,11 +20,6 @@
     >
       <span class="text-xs font-bold uppercase tracking-wider text-gray-400"
         >Scenes Outline</span
-      >
-      <button
-        class="p-2 text-gray-400 hover:text-white transition-colors"
-        onclick={toggleOutline}
-        type="button"><XSquare /></button
       >
     </div>
 

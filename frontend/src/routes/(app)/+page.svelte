@@ -1,7 +1,11 @@
 <script lang="ts">
   import Editor from "$lib/editor/Editor.svelte";
   import Outline from "$lib/editor/Outline.svelte";
-  import { editorViewSettings, userSettings } from "$lib/state/settings.svelte";
+  import {
+    editorViewSettings,
+    SidebarMenus,
+    userSettings,
+  } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
@@ -10,7 +14,31 @@
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
 
-  let editorRef: Editor | null = null;
+  let editorRef = $state(<Editor | null>null);
+
+  function toggleSidebarMenu(menu: SidebarMenus) {
+    let selectedMenu: string;
+    switch (menu) {
+      case SidebarMenus.Outline:
+        selectedMenu = "outlineOpen";
+        break;
+      default:
+        return;
+    }
+
+    const oppositeMenuState = !(editorViewSettings as any)[selectedMenu];
+    (editorViewSettings as any)[selectedMenu] = oppositeMenuState;
+
+    if (oppositeMenuState) {
+      for (let key in editorViewSettings) {
+        if (key === selectedMenu) {
+          continue;
+        }
+        (editorViewSettings as any)[key] = false;
+      }
+    }
+  }
+
   function applyUserUpdate() {
     editorRef?.updateUser({ name, color });
   }
@@ -19,14 +47,6 @@
     if (editorRef) {
       editorRef.updatePreview();
     }
-  }
-
-  function toggleOutline() {
-    editorViewSettings.outlineOpen = !editorViewSettings.outlineOpen;
-  }
-
-  function handleSceneClick(pos: number) {
-    editorRef?.scrollIntoView(pos);
   }
 
   onMount(async () => {
@@ -90,8 +110,9 @@
   >
     <button
       class="p-2 text-gray-400 hover:text-white transition-colors"
+      class:text-white={editorViewSettings.outlineOpen}
       title="Document outline"
-      onclick={toggleOutline}
+      onclick={() => toggleSidebarMenu(SidebarMenus.Outline)}
     >
       <FileText />
     </button>
@@ -107,7 +128,7 @@
       </a>
     </div>
   </aside>
-  <Outline {handleSceneClick} {toggleOutline} />
+  <Outline {editorRef} />
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
