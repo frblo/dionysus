@@ -4,8 +4,9 @@ export const userSettings = $state({
 
 export enum SidebarMenus {
   Outline,
+  None,
 }
 
 export const editorViewSettings = $state({
-  outlineOpen: false,
+  open: SidebarMenus.None
 });

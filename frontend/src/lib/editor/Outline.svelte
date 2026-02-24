@@ -1,6 +1,6 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { editorViewSettings } from "$lib/state/settings.svelte";
+  import { editorViewSettings, SidebarMenus } from "$lib/state/settings.svelte";
   import { scenes } from "$lib/state/scenes.svelte";
 
   let { editorRef } = $props();
@@ -10,7 +10,7 @@
   }
 </script>
 
-{#if editorViewSettings.outlineOpen}
+{#if editorViewSettings.open === SidebarMenus.Outline}
   <aside
     class="relative h-full w-72 bg-[#252526] border-r border-gray-700 flex flex-col z-30"
     transition:slide={{ axis: "x", duration: 200 }}

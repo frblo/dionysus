@@ -17,26 +17,31 @@
   let editorRef = $state(<Editor | null>null);
 
   function toggleSidebarMenu(menu: SidebarMenus) {
-    let selectedMenu: string;
-    switch (menu) {
-      case SidebarMenus.Outline:
-        selectedMenu = "outlineOpen";
-        break;
-      default:
-        return;
+    if (editorViewSettings.open === menu) {
+      editorViewSettings.open = SidebarMenus.None;
+    } else {
+      editorViewSettings.open = menu;
     }
-
-    const oppositeMenuState = !(editorViewSettings as any)[selectedMenu];
-    (editorViewSettings as any)[selectedMenu] = oppositeMenuState;
-
-    if (oppositeMenuState) {
-      for (let key in editorViewSettings) {
-        if (key === selectedMenu) {
-          continue;
-        }
-        (editorViewSettings as any)[key] = false;
-      }
-    }
+    // let selectedMenu: string;
+    // switch (menu) {
+    //   case SidebarMenus.Outline:
+    //     selectedMenu = "outlineOpen";
+    //     break;
+    //   default:
+    //     return;
+    // }
+    //
+    // const oppositeMenuState = !(editorViewSettings as any)[selectedMenu];
+    // (editorViewSettings as any)[selectedMenu] = oppositeMenuState;
+    //
+    // if (oppositeMenuState) {
+    //   for (let key in editorViewSettings) {
+    //     if (key === selectedMenu) {
+    //       continue;
+    //     }
+    //     (editorViewSettings as any)[key] = false;
+    //   }
+    // }
   }
 
   function applyUserUpdate() {
@@ -110,7 +115,7 @@
   >
     <button
       class="p-2 text-gray-400 hover:text-white transition-colors"
-      class:text-white={editorViewSettings.outlineOpen}
+      class:text-white={editorViewSettings.open === SidebarMenus.Outline}
       title="Document outline"
       onclick={() => toggleSidebarMenu(SidebarMenus.Outline)}
     >

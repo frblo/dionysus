@@ -1,13 +1,13 @@
 import { ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 
-export interface Scene {
+export type Scene = {
   name: string;
   pos: number;
 }
 
-export const scenes = $state({
-  list: <Scene[]>([])
+export const scenes = $state<{ list: Scene[] }>({
+  list: [],
 });
 
 export const sceneScanner = ViewPlugin.fromClass(
@@ -19,7 +19,7 @@ export const sceneScanner = ViewPlugin.fromClass(
     }
 
     scanScenes(update: ViewUpdate) {
-      const foundScenes: { name: string; pos: number }[] = [];
+      const foundScenes: Scene[] = [];
       const state = update.state;
 
       const tree = ensureSyntaxTree(state, state.doc.length, 50) || syntaxTree(state);
