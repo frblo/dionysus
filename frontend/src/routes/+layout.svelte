@@ -11,7 +11,7 @@
 </svelte:head>
 
 <div
-  class="fixed inset-0 flex flex-col overflow-hidden bg-gray-100 bg-[#1e1e1e] text-gray-200"
+  class="fixed inset-0 flex flex-col overflow-hidden bg-[#1e1e1e] text-gray-200"
 >
   {@render children()}
 </div>
