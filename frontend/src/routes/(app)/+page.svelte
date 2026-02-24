@@ -22,26 +22,6 @@
     } else {
       editorViewSettings.open = menu;
     }
-    // let selectedMenu: string;
-    // switch (menu) {
-    //   case SidebarMenus.Outline:
-    //     selectedMenu = "outlineOpen";
-    //     break;
-    //   default:
-    //     return;
-    // }
-    //
-    // const oppositeMenuState = !(editorViewSettings as any)[selectedMenu];
-    // (editorViewSettings as any)[selectedMenu] = oppositeMenuState;
-    //
-    // if (oppositeMenuState) {
-    //   for (let key in editorViewSettings) {
-    //     if (key === selectedMenu) {
-    //       continue;
-    //     }
-    //     (editorViewSettings as any)[key] = false;
-    //   }
-    // }
   }
 
   function applyUserUpdate() {
