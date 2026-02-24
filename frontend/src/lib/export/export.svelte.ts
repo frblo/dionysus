@@ -1,9 +1,5 @@
 import { generate_html, generate_pdf } from "$lib/converter/pkg/converter";
 
-export const exportMenuState = $state({
-  isOpen: false
-});
-
 export enum ExportTypes {
   Fountain,
   Pdf,

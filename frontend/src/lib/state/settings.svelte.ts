@@ -8,5 +8,6 @@ export enum SidebarMenus {
 }
 
 export const editorViewSettings = $state({
-  open: SidebarMenus.None
+  sidebarMenuOpen: SidebarMenus.None,
+  exportMenuOpen: false,
 });

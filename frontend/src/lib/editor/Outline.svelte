@@ -10,7 +10,7 @@
   }
 </script>
 
-{#if editorViewSettings.open === SidebarMenus.Outline}
+{#if editorViewSettings.sidebarMenuOpen === SidebarMenus.Outline}
   <aside
     class="relative h-full w-72 bg-[#252526] border-r border-gray-700 flex flex-col z-30"
     transition:slide={{ axis: "x", duration: 200 }}
