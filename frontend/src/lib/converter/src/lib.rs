@@ -21,6 +21,5 @@ pub fn generate_pdf(fountain: String) -> Result<Vec<u8>, JsValue> {
     let mut buffer = Vec::new();
     export_pdf(&parsed, &mut buffer, false);
 
-    // Ok(Uint8Array::from(&buffer[..]))
     Ok(buffer)
 }
