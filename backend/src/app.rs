@@ -1,5 +1,8 @@
 use axum::{Router, routing::get};
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::TraceLayer,
+};
 
 use crate::{auth, state::AppState, ws};
 
@@ -10,7 +13,8 @@ pub fn router(state: AppState) -> Router {
         .nest("/auth", auth::router())
         .route("/rooms/ws/{room_id}", get(ws::handler::ws_handler))
         .fallback_service(serve_dir)
-        .with_state(state);
+        .with_state(state)
+        .layer(TraceLayer::new_for_http());
 
     router
 }

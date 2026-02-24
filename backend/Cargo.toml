@@ -13,7 +13,7 @@ async-trait = "0.1.89"
 # web
 axum = "0.8"
 axum-extra = { version = "0.12.5", features = [ "cookie" ] }
-tower-http = { version = "0.6.8", features = [ "fs" ]}
+tower-http = { version = "0.6.8", features = [ "fs", "trace" ]}
 
 # database
 sqlx = { version = "0.8", features = [
@@ -33,7 +33,11 @@ chrono = { version = "0.4", features = [ "serde" ] }
 # error handling / config
 anyhow = "1"
 thiserror = "2"
-config = { version = "0.15.19", features = ["toml"] }
+config = { version = "0.15.19", features = [ "toml" ] }
+
+# logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [ "env-filter", "fmt", "json" ] }
 
 # crdt
 yrs = "=0.18.8" # pinned to compatable version of yrs-axum

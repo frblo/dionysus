@@ -2,6 +2,7 @@ mod app;
 mod auth;
 mod config;
 mod db;
+mod logging;
 mod rooms;
 mod state;
 mod ws;
@@ -12,11 +13,11 @@ use sqlx::PgPool;
 
 use crate::db::Db;
 
-const SERVE_FRONTEND_ARG: &str = "serve";
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = config::Config::new()?;
+
+    logging::init_tracing(&config)?;
 
     let addr: SocketAddr = SocketAddr::new(config.listener.ip, config.listener.port);
     let pool = PgPool::connect(&config.database.url).await?;

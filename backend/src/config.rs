@@ -9,6 +9,7 @@ const DEFAULT_TOML: &str = include_str!("../config/default.toml");
 pub struct Config {
     pub listener: Listener,
     pub database: Database,
+    pub logging: Logging,
 }
 
 impl Config {
@@ -45,4 +46,10 @@ pub struct Listener {
 #[derive(Debug, Deserialize)]
 pub struct Database {
     pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Logging {
+    pub filter: String,
+    pub json: bool,
 }
