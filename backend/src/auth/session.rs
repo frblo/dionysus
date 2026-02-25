@@ -4,7 +4,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 
-use crate::auth::session_store::SessionStore;
+use crate::auth::AuthManager;
 
 #[derive(Clone)]
 pub struct Session {
@@ -21,7 +21,7 @@ pub struct AuthSession(pub Session);
 
 impl<S> FromRequestParts<S> for AuthSession
 where
-    SessionStore: FromRef<S>,
+    AuthManager: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
@@ -35,10 +35,10 @@ where
             .get("session")
             .ok_or((StatusCode::UNAUTHORIZED, "missing session"))?;
 
-        let store = SessionStore::from_ref(state);
+        let auth = AuthManager::from_ref(state);
 
-        let session = store
-            .get(cookie.value())
+        let session = auth
+            .get_session(cookie.value())
             .await
             .ok_or((StatusCode::UNAUTHORIZED, "invalid session"))?;
 

@@ -152,4 +152,8 @@ impl OidcRegistry {
             .cloned()
             .ok_or_else(|| OidcError::UnknownProvider(id.to_string()))
     }
+
+    pub fn provider_ids(&self) -> Vec<String> {
+        self.providers.keys().cloned().collect()
+    }
 }

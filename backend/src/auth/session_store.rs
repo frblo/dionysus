@@ -34,9 +34,3 @@ impl SessionStore {
         self.store.write().await.remove(session_id);
     }
 }
-
-impl FromRef<AppState> for SessionStore {
-    fn from_ref(input: &AppState) -> Self {
-        input.sessions.clone()
-    }
-}

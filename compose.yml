@@ -8,12 +8,26 @@ services:
       POSTGRES_DB: dionysus
     volumes:
       - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dionysus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   oidc-mock:
     image: ghcr.io/geigerzaehler/oidc-provider-mock:latest
     container_name: local-oidc-mock
     ports:
       - "127.0.0.1:9400:9400"
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:9400/.well-known/openid-configuration').read()\""
+      ]
+      # test: ["CMD", "wget", "-qO-", "http://localhost:9400/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   dionysus:
     build:
@@ -25,8 +39,10 @@ services:
     environment:
       - DIONYSUS_DATABASE__URL=postgres://dionysus:dionysus@postgres:5432/dionysus
     depends_on:
-      - postgres
-      - oidc-mock
+      postgres:
+        condition: service_healthy
+      oidc-mock:
+        condition: service_healthy
 
 volumes:
   pgdata:

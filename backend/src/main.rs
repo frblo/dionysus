@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 
 use sqlx::PgPool;
 
-use crate::db::Db;
+use crate::{auth::AuthManager, db::Db};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -26,7 +26,9 @@ async fn main() -> anyhow::Result<()> {
         .await
         .expect("Failed to apply database migrations");
 
-    let state = state::AppState::new(Db::new(pool)).await;
+    let auth = AuthManager::new(&config).await?;
+
+    let state = state::AppState::new(Db::new(pool), auth).await;
 
     let app = app::router(state);
 

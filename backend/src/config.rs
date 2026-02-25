@@ -57,6 +57,7 @@ pub struct Logging {
 
 #[derive(Debug, Deserialize)]
 pub struct Oidc {
+    pub base_external_id: String,
     pub providers: HashMap<String, OidcProvider>,
 }
 

@@ -1,16 +1,22 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::extract::{Path, Query};
+use axum::response::{IntoResponse, Redirect};
+use axum::{Json, extract::State};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
-use rand::{Rng, distr::Alphanumeric};
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::{
-    auth::session::{AuthSession, Session},
-    state::AppState,
-};
+use crate::auth::AuthError;
+use crate::{auth::session::AuthSession, state::AppState};
 
-// pub async fn providers(State(state): State<AppState>,) -> Json<Provider> {
-// }
+#[derive(Serialize)]
+pub struct ProviderList {
+    pub providers: Vec<String>,
+}
+
+pub async fn providers(State(state): State<AppState>) -> Json<ProviderList> {
+    let providers = state.auth.provider_ids();
+    Json(ProviderList { providers })
+}
 
 #[derive(Serialize)]
 pub struct Me {
@@ -24,29 +30,31 @@ pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
 }
 
 #[derive(Deserialize)]
-pub struct LoginBody {
-    pub password: String,
+pub struct LoginQuery {
+    pub provider: String,
 }
 
 pub async fn login(
     State(state): State<AppState>,
+    Query(q): Query<LoginQuery>,
+) -> Result<Redirect, AuthError> {
+    let url = state.auth.start_login(&q.provider).await?;
+    Ok(Redirect::to(&url))
+}
+
+#[derive(Deserialize)]
+pub struct CallbackQuery {
+    pub code: String,
+    pub state: String,
+}
+
+pub async fn oidc_callback(
+    State(state): State<AppState>,
+    Path(provider): Path<String>,
+    Query(q): Query<CallbackQuery>,
     jar: CookieJar,
-    Json(body): Json<LoginBody>,
-) -> Result<(CookieJar, StatusCode), (StatusCode, &'static str)> {
-    if !(body.password == "manus27") {
-        return Err((StatusCode::UNAUTHORIZED, "invalid credentials"));
-    }
-
-    let session_id: String = rand::rng()
-        .sample_iter(&Alphanumeric)
-        .take(48)
-        .map(char::from)
-        .collect();
-
-    state
-        .sessions
-        .insert(session_id.clone(), Session::new("shared".to_string()))
-        .await;
+) -> Result<impl IntoResponse, AuthError> {
+    let session_id = state.auth.finish_login(&provider, q.code, q.state).await?;
 
     let cookie = Cookie::build(("session", session_id))
         .path("/")
@@ -55,7 +63,5 @@ pub async fn login(
         .same_site(axum_extra::extract::cookie::SameSite::Lax)
         .build();
 
-    let jar = jar.add(cookie);
-
-    Ok((jar, StatusCode::NO_CONTENT))
+    Ok((jar.add(cookie), Redirect::to("/")))
 }

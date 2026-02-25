@@ -1,3 +1,6 @@
+[oidc]
+base_external_id = "http://localhost:8000"
+
 [oidc.providers.dev]
 issuer = "http://oidc-mock:9400"
 client_id = "dev-client"
