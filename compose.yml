@@ -8,15 +8,25 @@ services:
       POSTGRES_DB: dionysus
     volumes:
       - pgdata:/var/lib/postgresql
+
+  oidc-mock:
+    image: ghcr.io/geigerzaehler/oidc-provider-mock:latest
+    container_name: local-oidc-mock
+    ports:
+      - "127.0.0.1:9400:9400"
+
   dionysus:
     build:
       context: .
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend/config/dev.toml:/etc/dionysus/config.toml:ro
     environment:
       - DIONYSUS_DATABASE__URL=postgres://dionysus:dionysus@postgres:5432/dionysus
     depends_on:
       - postgres
+      - oidc-mock
 
 volumes:
   pgdata:

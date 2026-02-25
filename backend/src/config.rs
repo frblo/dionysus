@@ -1,7 +1,7 @@
-use std::{env, net::IpAddr, path::Path};
+use std::{collections::HashMap, env, net::IpAddr, path::Path};
 
 use config::{Case, ConfigError, Environment, File, FileFormat};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_TOML: &str = include_str!("../config/default.toml");
 
@@ -10,6 +10,7 @@ pub struct Config {
     pub listener: Listener,
     pub database: Database,
     pub logging: Logging,
+    pub oidc: Oidc,
 }
 
 impl Config {
@@ -52,4 +53,17 @@ pub struct Database {
 pub struct Logging {
     pub filter: String,
     pub json: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Oidc {
+    pub providers: HashMap<String, OidcProvider>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct OidcProvider {
+    pub issuer: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub scopes: Vec<String>,
 }

@@ -1,0 +1,5 @@
+[oidc.providers.dev]
+issuer = "http://oidc-mock:9400"
+client_id = "dev-client"
+client_secret = "dev-secret" # Should be stored in an environmant variable in prod.
+scopes = ["openid", "profile", "email"]

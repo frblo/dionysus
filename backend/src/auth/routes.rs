@@ -1,13 +1,16 @@
-use axum::{Json, extract::State, http::StatusCode, response::Redirect};
+use axum::{Json, extract::State, http::StatusCode};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
 use rand::{Rng, distr::Alphanumeric};
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::{
-    auth::session_store::{AuthSession, Session},
+    auth::session::{AuthSession, Session},
     state::AppState,
 };
+
+// pub async fn providers(State(state): State<AppState>,) -> Json<Provider> {
+// }
 
 #[derive(Serialize)]
 pub struct Me {

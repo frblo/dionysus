@@ -14,6 +14,7 @@ async-trait = "0.1.89"
 axum = "0.8"
 axum-extra = { version = "0.12.5", features = [ "cookie" ] }
 tower-http = { version = "0.6.8", features = [ "fs", "trace" ]}
+openidconnect = { version = "3", default-features = false, features = ["reqwest", "rustls-tls"] }
 
 # database
 sqlx = { version = "0.8", features = [
