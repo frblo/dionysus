@@ -9,7 +9,13 @@
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
-  import { ExclamationCircle, FileText } from "svelte-bootstrap-icons";
+  import {
+    Download,
+    ExclamationCircle,
+    FileText,
+  } from "svelte-bootstrap-icons";
+  import { ExportTypes } from "$lib/export/export.svelte";
+  import ExportMenu from "$lib/export/ExportMenu.svelte";
 
   let name = $state("Anonymous" + Math.floor(Math.random() * 100));
   let color = $state("#e83d84");
@@ -17,10 +23,10 @@
   let editorRef = $state(<Editor | null>null);
 
   function toggleSidebarMenu(menu: SidebarMenus) {
-    if (editorViewSettings.open === menu) {
-      editorViewSettings.open = SidebarMenus.None;
+    if (editorViewSettings.sidebarMenuOpen === menu) {
+      editorViewSettings.sidebarMenuOpen = SidebarMenus.None;
     } else {
-      editorViewSettings.open = menu;
+      editorViewSettings.sidebarMenuOpen = menu;
     }
   }
 
@@ -85,6 +91,17 @@
     >
       Run Preview
     </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() =>
+        (editorViewSettings.exportMenuOpen =
+          !editorViewSettings.exportMenuOpen)}
+      title="Export"
+    >
+      <Download />
+    </button>
+    <ExportMenu {editorRef} />
   </div>
 </header>
 
@@ -95,7 +112,8 @@
   >
     <button
       class="p-2 text-gray-400 hover:text-white transition-colors"
-      class:text-white={editorViewSettings.open === SidebarMenus.Outline}
+      class:text-white={editorViewSettings.sidebarMenuOpen ===
+        SidebarMenus.Outline}
       title="Document outline"
       onclick={() => toggleSidebarMenu(SidebarMenus.Outline)}
     >
