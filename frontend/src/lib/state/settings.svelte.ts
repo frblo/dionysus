@@ -1,5 +1,6 @@
 export const userSettings = $state({
   vimEnabled: true,
+  highlighTrailingSpacesEnabled: true,
 });
 
 export enum SidebarMenus {
