@@ -64,7 +64,6 @@
           userSettings.highlighTrailingSpacesEnabled
             ? highlightTrailingWhitespace()
             : [],
-          // highlightTrailingWhitespace(), // TODO: When settings exists, have toggle for this
           yCollab(ytext, provider.awareness, { undoManager }),
           vimExt,
           keymap.of([
