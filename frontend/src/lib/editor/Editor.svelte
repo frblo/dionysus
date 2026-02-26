@@ -3,7 +3,11 @@
   import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
-  import { EditorView, keymap } from "@codemirror/view";
+  import {
+    EditorView,
+    highlightTrailingWhitespace,
+    keymap,
+  } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
   import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
@@ -57,6 +61,9 @@
           fountain(),
           syntaxHighlighting(fountainHighlightStyle),
           basicDark,
+          userSettings.highlighTrailingSpacesEnabled
+            ? highlightTrailingWhitespace()
+            : [],
           yCollab(ytext, provider.awareness, { undoManager }),
           vimExt,
           keymap.of([
