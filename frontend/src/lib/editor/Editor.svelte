@@ -3,11 +3,7 @@
   import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
-  import {
-    EditorView,
-    highlightTrailingWhitespace,
-    keymap,
-  } from "@codemirror/view";
+  import { EditorView, keymap } from "@codemirror/view";
   import { EditorState } from "@codemirror/state";
   import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
@@ -19,6 +15,10 @@
   import { userSettings } from "$lib/state/settings.svelte";
   import { generatePreview } from "$lib/state/preview.svelte";
   import { sceneScanner } from "$lib/state/scenes.svelte";
+  import {
+    createTrailingSpaces,
+    setTrailingSpacesEnabled,
+  } from "$lib/editor/trailing-spaces";
 
   // Decide on what protocol to use based on if its https or http
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -52,6 +52,7 @@
     provider.awareness.setLocalStateField("user", user);
 
     const vimExt = createVim(undoManager, updatePreview);
+    const trailingSpaces = createTrailingSpaces();
 
     view = new EditorView({
       parent: editorEl,
@@ -61,9 +62,7 @@
           fountain(),
           syntaxHighlighting(fountainHighlightStyle),
           basicDark,
-          userSettings.highlighTrailingSpacesEnabled
-            ? highlightTrailingWhitespace()
-            : [],
+          trailingSpaces,
           yCollab(ytext, provider.awareness, { undoManager }),
           vimExt,
           keymap.of([
@@ -111,6 +110,7 @@
   $effect(() => {
     if (!view) return;
     setVimEnabled(view, userSettings.vimEnabled);
+    setTrailingSpacesEnabled(view, userSettings.highlighTrailingSpacesEnabled);
   });
 
   export function updateUser(user: { name: string; color: string }) {
