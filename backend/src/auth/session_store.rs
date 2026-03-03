@@ -1,11 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use axum::extract::FromRef;
-
 use tokio::sync::RwLock;
 
 use crate::auth::Session;
-use crate::state::AppState;
 
 /// Stores current user sessions
 ///

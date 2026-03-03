@@ -9,17 +9,17 @@ use std::time::Duration;
 use axum::extract::FromRef;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::{Json, Router};
 use openidconnect::core::CoreResponseType;
 use openidconnect::reqwest::async_http_client;
 use openidconnect::{
-    AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, PkceCodeChallenge, PkceCodeVerifier,
-    RedirectUrl,
+    AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, PkceCodeChallenge, RedirectUrl,
 };
 use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
+use tracing::info;
 
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
 use crate::config::Config;
@@ -179,11 +179,20 @@ impl AuthManager {
             .claims(&client.id_token_verifier(), &pl.nonce)
             .map_err(|_| AuthError::IdTokenVerification)?;
 
-        let user_id = format!("{}|{}", claims.issuer().as_str(), claims.subject().as_str());
+        let user_id = format!("{}|{}", provider_id, claims.subject().as_str());
+        let display_name = claims
+            .preferred_username()
+            .map(|s| s.to_string())
+            .or(claims.email().map(|s| s.to_string()))
+            .or(claims
+                .name()
+                .and_then(|s| s.get(None))
+                .map(|s| s.to_string()))
+            .unwrap_or_else(|| user_id.clone());
 
         let session_id = rand_str(64);
         self.sessions
-            .insert(session_id.clone(), Session::new(user_id))
+            .insert(session_id.clone(), Session::new(user_id, display_name))
             .await;
 
         Ok(session_id)

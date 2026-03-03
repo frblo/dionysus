@@ -9,11 +9,15 @@ use crate::auth::AuthManager;
 #[derive(Clone)]
 pub struct Session {
     pub user_id: String,
+    pub display_name: String,
 }
 
 impl Session {
-    pub fn new(user_id: String) -> Self {
-        Self { user_id }
+    pub fn new(user_id: String, display_name: String) -> Self {
+        Self {
+            user_id,
+            display_name,
+        }
     }
 }
 

@@ -4,15 +4,32 @@
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
+  import { page } from "$app/state";
   import { ExclamationCircle } from "svelte-bootstrap-icons";
 
-  let name = $state("Anonymous" + Math.floor(Math.random() * 100));
-  let color = $state("#e83d84");
+  const colors = [
+    "#e83d84", // pink
+    "#4fc4cf", // cyan
+    "#f4a261", // warm orange
+    "#7bed9f", // mint green
+    "#a29bfe", // lavender
+    "#ffd32a", // yellow
+    "#ff6b6b", // coral red
+    "#48dbfb", // sky blue
+    "#ff9ff3", // light pink
+    "#54a0ff", // blue
+    "#5f27cd", // purple
+    "#00d2d3", // teal
+    "#ff9f43", // peach
+    "#c8d6e5", // steel blue-grey
+    "#01abc2", // deep cyan
+    "#fd79a8", // rose
+  ];
+
+  let name = page.data.me?.display_name;
+  let color = colors[Math.floor(Math.random() * colors.length)];
 
   let editorRef: Editor | null = null;
-  function applyUserUpdate() {
-    editorRef?.updateUser({ name, color });
-  }
 
   function updatePreview() {
     if (editorRef) {
@@ -29,35 +46,7 @@
 <header
   class="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-gray-700 shadow-md z-10"
 >
-  <div class="flex items-center gap-4">
-    <div class="flex flex-col">
-      <label
-        for="user-name"
-        class="text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1 tracking-wider"
-        >User Identity</label
-      >
-      <div class="flex gap-2">
-        <textarea
-          id="user-name"
-          bind:value={name}
-          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-32"
-        ></textarea>
-        <textarea
-          bind:value={color}
-          class="h-8 px-2 py-1 text-sm border border-gray-600 rounded bg-[#3c3c3c] text-white focus:border-blue-500 focus:outline-none resize-none w-24 font-mono"
-        ></textarea>
-      </div>
-    </div>
-
-    <button
-      class="mt-5 px-3 py-1 rounded border border-gray-500 text-gray-300 text-xs font-semibold hover:bg-gray-700 hover:text-white transition h-8"
-      onclick={applyUserUpdate}
-    >
-      Update
-    </button>
-  </div>
-
-  <div class="flex items-center gap-2 mt-5">
+  <div class="flex items-center gap-2 mt-5 ml-auto">
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
       onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}

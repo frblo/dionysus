@@ -21,11 +21,13 @@ pub async fn providers(State(state): State<AppState>) -> Json<ProviderList> {
 #[derive(Serialize)]
 pub struct Me {
     user_id: String,
+    display_name: String,
 }
 
 pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
     Json(Me {
         user_id: session.user_id,
+        display_name: session.display_name,
     })
 }
 

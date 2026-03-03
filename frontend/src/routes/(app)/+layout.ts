@@ -1,6 +1,11 @@
 import type { LayoutLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
 
+export type Me = {
+  user_id: String;
+  display_name: String;
+};
+
 export const load: LayoutLoad = async ({ fetch, url }) => {
   const r = await fetch("/auth/me", {
     method: "GET",
@@ -16,6 +21,6 @@ export const load: LayoutLoad = async ({ fetch, url }) => {
     throw redirect(302, "/login");
   }
 
-  const me = await r.json();
+  const me: Me = await r.json();
   return { me };
 };
