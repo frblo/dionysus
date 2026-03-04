@@ -10,7 +10,7 @@ services:
       - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dionysus"]
-      interval: 5s
+      interval: 10s
       timeout: 3s
       retries: 10
 
@@ -24,8 +24,7 @@ services:
         "CMD-SHELL",
         "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:9400/.well-known/openid-configuration').read()\""
       ]
-      # test: ["CMD", "wget", "-qO-", "http://localhost:9400/.well-known/openid-configuration"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
       retries: 10
 
