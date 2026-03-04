@@ -279,7 +279,7 @@ impl Storage for DatabaseStorage {
         room_id: &str,
         opts: LoadUpdatesOptions,
     ) -> Result<Vec<UpdateEntry>, Error> {
-        let from: i64 = opts.from.map(|v| v as i64).unwrap_or(1);
+        let from: i64 = opts.from.map_or(1, |v| v as i64);
         let to: Option<i64> = opts.to.map(|v| v as i64);
 
         let rows = sqlx::query!(

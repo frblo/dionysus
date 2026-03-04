@@ -36,7 +36,7 @@ pub enum OidcError {
     UnknownProvider(String),
 }
 
-/// A PendingLoginStore is used to store information about an ongoing OIDC
+/// A [`PendingLoginStore`] is used to store information about an ongoing OIDC
 /// login process.
 ///
 /// Currently implemented as a in memory map.

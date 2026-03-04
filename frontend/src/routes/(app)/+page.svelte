@@ -19,7 +19,7 @@
   import ExportMenu from "$lib/export/ExportMenu.svelte";
 
   const colors = [
-    "#e83d84", // pink
+    "#e83d84", // cerise
     "#4fc4cf", // cyan
     "#f4a261", // warm orange
     "#7bed9f", // mint green

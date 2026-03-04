@@ -22,7 +22,7 @@ impl Config {
             .add_source(File::from(Path::new("/etc/dionysus/config.toml")).required(false));
 
         // If DIONYSUS_CONFIG environment variable is set check path for config takes precedence
-        if let Some(path) = env::var("DIONYSUS_CONFIG").ok() {
+        if let Ok(path) = env::var("DIONYSUS_CONFIG") {
             builder = builder.add_source(File::from(Path::new(&path)).required(true));
         }
 

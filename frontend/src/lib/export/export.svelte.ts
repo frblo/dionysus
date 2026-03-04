@@ -11,17 +11,17 @@ export function exportToFile(script: string, type: ExportTypes) {
   let fileExtension;
   switch (type) {
     case ExportTypes.Fountain:
-      blob = new Blob([script], { type: 'text/plain' });
+      blob = new Blob([script], { type: "text/plain" });
       fileExtension = "fountain";
       break;
     case ExportTypes.Html:
       const html = generate_html(script);
-      blob = new Blob([html], { type: 'text/html' });
+      blob = new Blob([html], { type: "text/html" });
       fileExtension = "html";
       break;
     case ExportTypes.Pdf:
       const pdf = generate_pdf(script);
-      blob = new Blob([pdf as any], { type: 'application/pdf' });
+      blob = new Blob([pdf as any], { type: "application/pdf" });
       fileExtension = "pdf";
       break;
     default:
@@ -32,7 +32,7 @@ export function exportToFile(script: string, type: ExportTypes) {
   const filename = `script.${fileExtension}`;
 
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);

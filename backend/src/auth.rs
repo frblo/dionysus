@@ -19,7 +19,6 @@ use openidconnect::{
 use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
-use tracing::info;
 
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
 use crate::config::Config;
@@ -86,7 +85,7 @@ impl AuthManager {
     }
 
     pub async fn logout(&self, session_id: &str) {
-        self.sessions.remove(session_id).await
+        self.sessions.remove(session_id).await;
     }
 
     pub fn provider_ids(&self) -> Vec<String> {
@@ -125,7 +124,7 @@ impl AuthManager {
 
         self.pending
             .insert(
-                csrf.secret().to_string(),
+                csrf.secret().clone(),
                 PendingLogin {
                     provier_id: provider_id.to_string(),
                     nonce,
@@ -136,10 +135,10 @@ impl AuthManager {
             )
             .await;
 
-        println!("{auth_url}");
         Ok(auth_url.to_string())
     }
 
+    /// The [`String`] returned is the session id for the completed login.
     pub async fn finish_login(
         &self,
         provider_id: &str,
