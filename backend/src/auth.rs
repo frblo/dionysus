@@ -14,7 +14,7 @@ use axum::{Json, Router};
 use openidconnect::core::CoreResponseType;
 use openidconnect::reqwest::async_http_client;
 use openidconnect::{
-    AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, PkceCodeChallenge, RedirectUrl,
+    AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, RedirectUrl,
 };
 use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
@@ -108,8 +108,6 @@ impl AuthManager {
             .clone()
             .set_redirect_uri(redirect_url.clone());
 
-        let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
-
         let mut req = client.authorize_url(
             AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
             CsrfToken::new_random,
@@ -120,7 +118,7 @@ impl AuthManager {
             req = req.add_scope(s.clone());
         }
 
-        let (auth_url, csrf, nonce) = req.set_pkce_challenge(challenge).url();
+        let (auth_url, csrf, nonce) = req.url();
 
         self.pending
             .insert(
@@ -128,7 +126,6 @@ impl AuthManager {
                 PendingLogin {
                     provier_id: provider_id.to_string(),
                     nonce,
-                    pkce_verifier: verifier,
                     redirect_url,
                     created_at: tokio::time::Instant::now(),
                 },
@@ -164,10 +161,12 @@ impl AuthManager {
 
         let token = client
             .exchange_code(AuthorizationCode::new(code))
-            .set_pkce_verifier(pl.pkce_verifier)
             .request_async(async_http_client)
             .await
-            .map_err(|_| AuthError::TokenExchange)?;
+            .map_err(|e| {
+                tracing::error!("token exhange failure {e:?}");
+                AuthError::TokenExchange
+            })?;
 
         let id_token = token
             .extra_fields()

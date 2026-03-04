@@ -2,7 +2,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use openidconnect::{
-    ClientId, ClientSecret, IssuerUrl, Nonce, PkceCodeVerifier, RedirectUrl, Scope,
+    ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl, Scope,
     core::{CoreClient, CoreProviderMetadata},
     reqwest::async_http_client,
     url,
@@ -52,7 +52,6 @@ pub struct PendingLoginStore {
 pub struct PendingLogin {
     pub provier_id: String,
     pub nonce: Nonce,
-    pub pkce_verifier: PkceCodeVerifier,
     pub redirect_url: RedirectUrl,
     pub created_at: Instant,
 }
