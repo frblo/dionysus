@@ -1,11 +1,22 @@
 <script lang="ts">
   import Editor from "$lib/editor/Editor.svelte";
-  import { userSettings } from "$lib/state/settings.svelte";
+  import Outline from "$lib/editor/Outline.svelte";
+  import {
+    editorViewSettings,
+    SidebarMenus,
+    userSettings,
+  } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
   import { page } from "$app/state";
-  import { ExclamationCircle } from "svelte-bootstrap-icons";
+  import {
+    Download,
+    ExclamationCircle,
+    FileText,
+  } from "svelte-bootstrap-icons";
+  import { ExportTypes } from "$lib/export/export.svelte";
+  import ExportMenu from "$lib/export/ExportMenu.svelte";
 
   const colors = [
     "#e83d84", // pink
@@ -29,7 +40,19 @@
   let name = page.data.me?.display_name;
   let color = colors[Math.floor(Math.random() * colors.length)];
 
-  let editorRef: Editor | null = null;
+  let editorRef = $state(<Editor | null>null);
+
+  function toggleSidebarMenu(menu: SidebarMenus) {
+    if (editorViewSettings.sidebarMenuOpen === menu) {
+      editorViewSettings.sidebarMenuOpen = SidebarMenus.None;
+    } else {
+      editorViewSettings.sidebarMenuOpen = menu;
+    }
+  }
+
+  function applyUserUpdate() {
+    editorRef?.updateUser({ name, color });
+  }
 
   function updatePreview() {
     if (editorRef) {
@@ -60,13 +83,35 @@
     >
       Run Preview
     </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() =>
+        (editorViewSettings.exportMenuOpen =
+          !editorViewSettings.exportMenuOpen)}
+      title="Export"
+    >
+      <Download />
+    </button>
+    <ExportMenu {editorRef} />
   </div>
 </header>
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
+  <!-- Side bar -->
   <aside
     class="w-12 bg-[#333333] border-r border-gray-700 flex flex-col items-center py-4 gap-4"
   >
+    <button
+      class="p-2 text-gray-400 hover:text-white transition-colors"
+      class:text-white={editorViewSettings.sidebarMenuOpen ===
+        SidebarMenus.Outline}
+      title="Document outline"
+      onclick={() => toggleSidebarMenu(SidebarMenus.Outline)}
+    >
+      <FileText />
+    </button>
+
     <div class="mt-auto flex flex-col items-center gap-4">
       <a href="https://github.com/frblo/dionysus/issues" target="_blank">
         <button
@@ -78,6 +123,7 @@
       </a>
     </div>
   </aside>
+  <Outline {editorRef} />
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
       class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
