@@ -1,3 +1,3 @@
 # Dionysus Backend
 
-Run with `cargo run` which opens on port 8000.
+See root `README.md` for info on how to run

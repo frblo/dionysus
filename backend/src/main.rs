@@ -1,43 +1,36 @@
 mod app;
 mod auth;
+mod config;
 mod db;
+mod logging;
 mod rooms;
 mod state;
 mod ws;
 
-use std::{env, net::SocketAddr};
+use std::net::SocketAddr;
 
 use sqlx::PgPool;
 
-use crate::db::Db;
-
-const SERVE_FRONTEND_ARG: &str = "serve";
+use crate::{auth::AuthManager, db::Db};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
-    let pool = PgPool::connect(&dotenvy::var("DATABASE_URL")?).await?;
+    let config = config::Config::new()?;
+
+    logging::init_tracing(&config)?;
+
+    let addr: SocketAddr = SocketAddr::new(config.listener.ip, config.listener.port);
+    let pool = PgPool::connect(&config.database.url).await?;
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to apply database migrations");
 
-    let state = state::AppState::new(Db::new(pool)).await;
+    let auth = AuthManager::new(&config).await?;
 
-    let args: Vec<String> = env::args().collect();
+    let state = state::AppState::new(Db::new(pool), auth).await;
 
-    let serve_frontend = match &args.get(1) {
-        Some(s) => {
-            if s.as_str() == SERVE_FRONTEND_ARG {
-                true
-            } else {
-                false
-            }
-        }
-        _ => false,
-    };
-
-    let app = app::router(state, serve_frontend);
+    let app = app::router(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     println!("Listening on {}", listener.local_addr().unwrap());

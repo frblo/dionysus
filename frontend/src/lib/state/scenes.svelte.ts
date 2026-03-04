@@ -4,7 +4,7 @@ import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 export type Scene = {
   name: string;
   pos: number;
-}
+};
 
 export const scenes = $state<{ list: Scene[] }>({
   list: [],
@@ -22,7 +22,8 @@ export const sceneScanner = ViewPlugin.fromClass(
       const foundScenes: Scene[] = [];
       const state = update.state;
 
-      const tree = ensureSyntaxTree(state, state.doc.length, 50) || syntaxTree(state);
+      const tree =
+        ensureSyntaxTree(state, state.doc.length, 50) || syntaxTree(state);
 
       tree.iterate({
         enter(node) {
@@ -39,4 +40,3 @@ export const sceneScanner = ViewPlugin.fromClass(
     }
   },
 );
-
