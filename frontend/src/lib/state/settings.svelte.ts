@@ -8,7 +8,14 @@ export enum SidebarMenus {
   None,
 }
 
+export enum PanelFocus {
+  Both,
+  EditorOnly,
+  PreviewOnly,
+}
+
 export const editorViewSettings = $state({
   sidebarMenuOpen: SidebarMenus.None,
   exportMenuOpen: false,
+  panelFocus: PanelFocus.Both,
 });

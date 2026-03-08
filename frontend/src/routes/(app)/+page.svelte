@@ -1,24 +1,27 @@
 <script lang="ts">
-  import Editor from "$lib/editor/Editor.svelte";
-  import Outline from "$lib/editor/Outline.svelte";
-  import {
-    editorViewSettings,
-    SidebarMenus,
-    userSettings,
-  } from "$lib/state/settings.svelte";
-  import { preview } from "$lib/state/preview.svelte";
-  import init from "$lib/converter/pkg/converter";
   import { onMount } from "svelte";
   import { page } from "$app/state";
+
   import {
     Download,
     ExclamationCircle,
     FileText,
   } from "svelte-bootstrap-icons";
-  import { ExportTypes } from "$lib/export/export.svelte";
-  import ExportMenu from "$lib/export/ExportMenu.svelte";
 
-  const colors = [
+  import Editor from "$lib/editor/Editor.svelte";
+  import Outline from "$lib/editor/Outline.svelte";
+  import ExportMenu from "$lib/export/ExportMenu.svelte";
+  import Preview from "$lib/editor/Preview.svelte";
+
+  import {
+    editorViewSettings,
+    userSettings,
+    SidebarMenus,
+    PanelFocus,
+  } from "$lib/state/settings.svelte";
+  import init from "$lib/converter/pkg/converter";
+
+  const COLORS = [
     "#e83d84", // cerise
     "#4fc4cf", // cyan
     "#f4a261", // warm orange
@@ -37,27 +40,34 @@
     "#fd79a8", // rose
   ];
 
-  let name = page.data.me?.display_name;
-  let color = colors[Math.floor(Math.random() * colors.length)];
-
   let editorRef = $state(<Editor | null>null);
 
-  function toggleSidebarMenu(menu: SidebarMenus) {
-    if (editorViewSettings.sidebarMenuOpen === menu) {
-      editorViewSettings.sidebarMenuOpen = SidebarMenus.None;
-    } else {
-      editorViewSettings.sidebarMenuOpen = menu;
-    }
-  }
+  let name = page.data.me?.display_name;
+  let color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
-  function applyUserUpdate() {
-    editorRef?.updateUser({ name, color });
+  const editorWidth = $derived(
+    editorViewSettings.panelFocus === PanelFocus.EditorOnly
+      ? "100%"
+      : editorViewSettings.panelFocus === PanelFocus.PreviewOnly
+        ? "0%"
+        : "50%",
+  );
+
+  const previewWidth = $derived(
+    editorViewSettings.panelFocus === PanelFocus.PreviewOnly
+      ? "100%"
+      : editorViewSettings.panelFocus === PanelFocus.EditorOnly
+        ? "0%"
+        : "50%",
+  );
+
+  function toggleSidebarMenu(menu: SidebarMenus) {
+    editorViewSettings.sidebarMenuOpen =
+      editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
   }
 
   function updatePreview() {
-    if (editorRef) {
-      editorRef.updatePreview();
-    }
+    editorRef?.updatePreview();
   }
 
   onMount(async () => {
@@ -77,6 +87,15 @@
       {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
     </button>
 
+    <select
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium bg-[#252526] hover:bg-[#3c3c3c] transition h-8 cursor-pointer"
+      bind:value={editorViewSettings.panelFocus}
+    >
+      <option value={PanelFocus.Both}>Split</option>
+      <option value={PanelFocus.EditorOnly}>Editor only</option>
+      <option value={PanelFocus.PreviewOnly}>Preview only</option>
+    </select>
+
     <button
       class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
       onclick={updatePreview}
@@ -93,6 +112,7 @@
     >
       <Download />
     </button>
+
     <ExportMenu {editorRef} />
   </div>
 </header>
@@ -124,36 +144,22 @@
     </div>
   </aside>
   <Outline {editorRef} />
+
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
     <section
-      class="w-1/2 border-r border-gray-700 flex flex-col overflow-hidden"
+      class="flex flex-col overflow-hidden transition-all duration-200 border-r border-gray-700"
+      style="width: {editorWidth}"
     >
       <div class="flex-1 overflow-auto">
         <Editor bind:this={editorRef} user={{ name, color }} />
       </div>
     </section>
 
-    <section class="w-1/2 overflow-hidden bg-[#1e1e1e]">
-      {#if preview.html}
-        <iframe
-          title="Screenplay Preview"
-          srcdoc={preview.html}
-          class="w-full h-full border-none bg-white"
-        ></iframe>
-      {:else}
-        <div
-          class="flex flex-col items-center justify-center h-full text-gray-500 text-center p-12"
-        >
-          <p class="italic mb-2">No content rendered.</p>
-          <p class="text-xs opacity-70">
-            No content found. Try writing something and then click "RUN
-            PREVIEW", press
-            <kbd class="bg-gray-800 px-1 rounded text-gray-300">CTRL+S</kbd> or
-            run command
-            <kbd class="bg-gray-800 px-1 rounded text-gray-300">:w</kbd> to see preview...
-          </p>
-        </div>
-      {/if}
+    <section
+      class="flex flex-col overflow-hidden transition-all duration-200"
+      style="width: {previewWidth}"
+    >
+      <Preview />
     </section>
   </main>
 </div>
