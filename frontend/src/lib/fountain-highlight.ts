@@ -13,7 +13,7 @@ const tokenTypes = {
   scene_heading:
     /^((?:\*{0,3}_?)?(?:(?:int|ext|est|i\/e)[. ]).+)|^(?:\.(?!\.+))(.+)/i,
 
-  character: /^\s*[A-Z][A-Z0-9 \t]+\^?$|^\@(.+)/,
+  character: /^\s*[A-ZÅÄÖ][A-Z0-9ÅÄÖ \t]+\^?$|^\@(.+)/,
   dialogue: /^\s*(\^?)?(?:\n(?!\n+))([\s\S]+)/,
   parenthetical: /^(\(.+\))$/,
 
