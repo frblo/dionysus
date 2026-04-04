@@ -19,6 +19,7 @@
     createTrailingSpaces,
     setTrailingSpacesEnabled,
   } from "$lib/editor/trailing-spaces";
+  import { debounce } from "$lib/utils/debounce";
 
   // Decide on what protocol to use based on if its https or http
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -53,6 +54,9 @@
 
     const vimExt = createVim(undoManager, updatePreview);
     const trailingSpaces = createTrailingSpaces();
+    const debouncedPreview = debounce((text: string) => {
+      generatePreview(text);
+    }, 300);
 
     view = new EditorView({
       parent: editorEl,
@@ -91,6 +95,11 @@
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
           sceneScanner,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              debouncedPreview(update.state.doc.toString());
+            }
+          }),
           basicSetup,
         ],
       }),

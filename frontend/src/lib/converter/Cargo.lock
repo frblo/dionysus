@@ -380,9 +380,9 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "rustwell"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f007558e4d0bc6df163f4a0d9db568589ca72086e97437bc72ff11577bb6da9"
+checksum = "19135d12a95f757a51f213f4b3fdb3ce0034c4b90195cbfd3e034053d8909660"
 dependencies = [
  "bitflags 2.10.0",
  "krilla",

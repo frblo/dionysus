@@ -1,4 +1,7 @@
-import { generate_html, generate_pdf } from "$lib/converter/pkg/converter";
+import {
+  generate_standalone_html,
+  generate_pdf,
+} from "$lib/converter/pkg/converter";
 
 export enum ExportTypes {
   Fountain,
@@ -15,7 +18,7 @@ export function exportToFile(script: string, type: ExportTypes) {
       fileExtension = "fountain";
       break;
     case ExportTypes.Html:
-      const html = generate_html(script);
+      const html = generate_standalone_html(script);
       blob = new Blob([html], { type: "text/html" });
       fileExtension = "html";
       break;
