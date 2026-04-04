@@ -2,7 +2,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use openidconnect::{
-    ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl, Scope,
+    AuthUrl, ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl, Scope,
     core::{CoreClient, CoreProviderMetadata},
     reqwest::async_http_client,
     url,
@@ -124,6 +124,23 @@ impl OidcRegistry {
                     provider: id.clone(),
                     source: Box::new(e),
                 })?;
+
+            let meta = if let Some(external) = &p.external_issuer {
+                let internal = p.issuer.trim_end_matches('/');
+                let external_str = external.trim_end_matches('/');
+
+                let patch = |url: &str| url.replacen(internal, external_str, 1);
+
+                let auth_url = AuthUrl::new(patch(meta.authorization_endpoint().as_str()))
+                    .map_err(|e| OidcError::InvalidIssuer {
+                        provider: id.clone(),
+                        source: e,
+                    })?;
+
+                meta.set_authorization_endpoint(auth_url)
+            } else {
+                meta
+            };
 
             let client = CoreClient::from_provider_metadata(
                 meta,

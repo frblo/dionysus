@@ -57,13 +57,14 @@ pub struct Logging {
 
 #[derive(Debug, Deserialize)]
 pub struct Oidc {
-    pub base_external_id: String,
+    pub external_base_url: String,
     pub providers: HashMap<String, OidcProvider>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OidcProvider {
     pub issuer: String,
+    pub external_issuer: Option<String>,
     pub client_id: String,
     pub client_secret: String,
     pub scopes: Vec<String>,
