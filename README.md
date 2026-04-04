@@ -21,7 +21,7 @@ For production deployments, use the published Docker image and configure it as d
 | Setting | Required | Format |
 | --- | --- | --- |
 | database.url | Yes | postgresql://USER:PWD@HOST:PORT/DB |
-| oidc.base_external_id | Yes | Base for externally reachable url. E.g. "https://your-domain.com" |
+| oidc.external_base_url | Yes | Base for externally reachable url. E.g. "https://your-domain.com" |
 | oidc.providers.<name> | Yes | See [OIDC provider config](#oidc-providers-config) section |
 | logging.filter | No | Default: "info,tower_http=debug" |
 | logging.json | No | Default: False |
@@ -51,12 +51,13 @@ For secrets, it is generally recommended to use environment variables rather tha
 ### OIDC providers config
 Dionysus supports having multiple OIDC providers at the same time. Each one of these needs the following information.
 
-| Setting | Format |
-| --- | --- |
-| oidc.providers.<name>.issuer | Base url of the issuer |
-| oidc.providers.<name>.client_id | Client id for issuer |
-| oidc.providers.<name>.client_secret | Client secret for issuer |
-| oidc.providers.<name>.scopes | A list of the scopes to request from the issuer |
+| Setting | Required | Format |
+| --- | --- | --- |
+| oidc.providers.<name>.issuer | Yes | Base url of the issuer |
+| oidc.providers.<name>.external_issuer | No | An external url to the issuer reachable from the browser |
+| oidc.providers.<name>.client_id | Yes | Client id for issuer |
+| oidc.providers.<name>.client_secret | Yes | Client secret for issuer |
+| oidc.providers.<name>.scopes | Yes | A list of the scopes to request from the issuer |
 
 These are configured in the same way as described above where <name> specifies the identifier for the issuer.
 

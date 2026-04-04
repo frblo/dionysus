@@ -13,9 +13,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use openidconnect::core::CoreResponseType;
 use openidconnect::reqwest::async_http_client;
-use openidconnect::{
-    AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, RedirectUrl,
-};
+use openidconnect::{AuthenticationFlow, AuthorizationCode, CsrfToken, Nonce, RedirectUrl};
 use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
@@ -76,7 +74,7 @@ impl AuthManager {
             oidc: Arc::new(oidc),
             pending,
             sessions,
-            external_base_url: cfg.oidc.base_external_id.clone(),
+            external_base_url: cfg.oidc.external_base_url.clone(),
         })
     }
 
