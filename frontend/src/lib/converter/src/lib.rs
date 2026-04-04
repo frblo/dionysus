@@ -1,7 +1,7 @@
 use rustwell::{A4, Exporter, ExporterExt, HtmlExporter, PdfExporter, parse};
 use wasm_bindgen::prelude::*;
 
-/// Runs the Rustwell fountain parser and compiles the script into stylized HTML.
+/// Runs the Rustwell fountain parser and compiles the script into stylized `html`.
 #[wasm_bindgen]
 pub fn generate_standalone_html(fountain: String) -> Result<String, JsValue> {
     let parsed = parse(fountain);
