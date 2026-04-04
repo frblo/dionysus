@@ -24,7 +24,7 @@ services:
         "CMD-SHELL",
         "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:9400/.well-known/openid-configuration').read()\""
       ]
-      interval: 30s
+      interval: 10s
       timeout: 3s
       retries: 10
 
