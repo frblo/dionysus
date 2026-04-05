@@ -30,7 +30,7 @@ pub fn generate_html(fountain: String) -> Result<String, JsValue> {
     let exporter = HtmlExporter {
         standalone: false,
         synopses: false,
-        include_source_positions: false,
+        include_source_positions: true,
     };
     let html_string = exporter
         .export_to_string(&screenplay)

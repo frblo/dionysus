@@ -6,6 +6,7 @@
     Download,
     ExclamationCircle,
     FileText,
+    ArrowLeftRight,
   } from "svelte-bootstrap-icons";
 
   import Editor from "$lib/editor/Editor.svelte";
@@ -19,6 +20,7 @@
     SidebarMenus,
     PanelFocus,
   } from "$lib/state/settings.svelte";
+  import { preview } from "$lib/state/preview.svelte";
   import init from "$lib/converter/pkg/converter";
 
   const COLORS = [
@@ -95,6 +97,16 @@
       <option value={PanelFocus.EditorOnly}>Editor only</option>
       <option value={PanelFocus.PreviewOnly}>Preview only</option>
     </select>
+
+    <button
+      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
+      onclick={() => {
+        preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0);
+      }}
+      title="Sync cursor position"
+    >
+      <ArrowLeftRight />
+    </button>
 
     <button
       class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"

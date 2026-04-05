@@ -2,10 +2,12 @@
   import { slide } from "svelte/transition";
   import { editorViewSettings, SidebarMenus } from "$lib/state/settings.svelte";
   import { scenes } from "$lib/state/scenes.svelte";
+  import { preview } from "$lib/state/preview.svelte";
 
   let { editorRef } = $props();
 
   function handleSceneClick(pos: number) {
+    preview.jumpToLine(pos);
     editorRef?.scrollIntoView(pos);
   }
 </script>

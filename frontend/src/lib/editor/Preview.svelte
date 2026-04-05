@@ -3,8 +3,10 @@
 
   import { preview } from "$lib/state/preview.svelte";
   import init, { get_css } from "$lib/converter/pkg/converter";
+  import { scrollPreviewToLine } from "$lib/editor/scroll";
 
   let styleEl: Element;
+  let previewEl = $state(<HTMLElement | null>null);
 
   onMount(async () => {
     styleEl = document.createElement("style");
@@ -14,10 +16,23 @@
   });
 
   onDestroy(() => styleEl?.remove());
+
+  $effect(() => {
+    if (previewEl) {
+      scrollPreviewToLine(
+        preview.targetLine,
+        previewEl,
+        preview.scrollBehavior,
+      );
+    }
+  });
 </script>
 
 {#if preview.html}
-  <div class="w-full h-full border-none bg-white overflow-y-auto text-black">
+  <div
+    bind:this={previewEl}
+    class="w-full h-full border-none bg-white overflow-y-auto text-black"
+  >
     {@html preview.html}
   </div>
 {:else}

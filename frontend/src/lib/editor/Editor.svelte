@@ -13,7 +13,7 @@
 
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
-  import { generatePreview } from "$lib/state/preview.svelte";
+  import { preview } from "$lib/state/preview.svelte";
   import { sceneScanner } from "$lib/state/scenes.svelte";
   import {
     createTrailingSpaces,
@@ -38,11 +38,6 @@
   let view: EditorView | null = null;
   let provider: WebsocketProvider | null = null;
 
-  export function updatePreview() {
-    const script = getContent();
-    generatePreview(script);
-  }
-
   onMount(() => {
     const ydoc = new Y.Doc();
     provider = new WebsocketProvider(wsUrl, room, ydoc);
@@ -54,8 +49,9 @@
 
     const vimExt = createVim(undoManager, updatePreview);
     const trailingSpaces = createTrailingSpaces();
-    const debouncedPreview = debounce((text: string) => {
-      generatePreview(text);
+    const debouncedPreview = debounce((text: string, line: number) => {
+      preview.generatePreview(text);
+      preview.scrollToLine(line);
     }, 300);
 
     view = new EditorView({
@@ -97,7 +93,11 @@
           sceneScanner,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              debouncedPreview(update.state.doc.toString());
+              const head = update.state.selection.main.head;
+              debouncedPreview(
+                update.state.doc.toString(),
+                update.state.doc.lineAt(head).number,
+              );
             }
           }),
           basicSetup,
@@ -122,14 +122,14 @@
     setTrailingSpacesEnabled(view, userSettings.highlighTrailingSpacesEnabled);
   });
 
-  export function updateUser(user: { name: string; color: string }) {
-    if (provider) {
-      provider.awareness.setLocalStateField("user", user);
-    }
-  }
-
   export function getContent() {
     return view ? view.state.doc.toString() : "";
+  }
+
+  export function getCursorLine() {
+    if (!view) return 0;
+    const head = view.state.selection.main.head;
+    return view.state.doc.lineAt(head).number;
   }
 
   export function scrollIntoView(pos: number) {
@@ -137,10 +137,14 @@
       return;
     }
     view.dispatch({
-      selection: { anchor: pos, head: pos },
-      scrollIntoView: true,
+      effects: EditorView.scrollIntoView(pos, { y: "start", x: "start" }),
     });
     view.focus();
+  }
+
+  export function updatePreview() {
+    const script = getContent();
+    preview.generatePreview(script);
   }
 </script>
 
