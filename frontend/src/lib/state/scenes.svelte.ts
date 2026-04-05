@@ -3,7 +3,7 @@ import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 
 export type Scene = {
   name: string;
-  pos: number;
+  line: number;
 };
 
 export const scenes = $state<{ list: Scene[] }>({
@@ -30,7 +30,7 @@ export const sceneScanner = ViewPlugin.fromClass(
           if (node.name === "scene_heading") {
             foundScenes.push({
               name: state.sliceDoc(node.from, node.to),
-              pos: node.from,
+              line: state.doc.lineAt(node.from).number,
             });
           }
         },

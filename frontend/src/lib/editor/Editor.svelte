@@ -132,12 +132,13 @@
     return view.state.doc.lineAt(head).number;
   }
 
-  export function scrollIntoView(pos: number) {
-    if (!view) {
-      return;
-    }
+  export function jumpToLine(line: number) {
+    if (!view) return;
+
+    const pos = view.state.doc.line(line).from;
     view.dispatch({
-      effects: EditorView.scrollIntoView(pos, { y: "start", x: "start" }),
+      selection: { anchor: pos, head: pos },
+      effects: EditorView.scrollIntoView(pos, { y: "start" }),
     });
     view.focus();
   }
