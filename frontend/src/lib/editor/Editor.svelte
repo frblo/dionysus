@@ -47,7 +47,7 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vimExt = createVim(undoManager, updatePreview);
+    const vimExt = createVim(undoManager);
     const trailingSpaces = createTrailingSpaces();
     const debouncedPreview = debounce((text: string, line: number) => {
       preview.generatePreview(text);
@@ -77,13 +77,6 @@
               key: "Mod-Shift-z",
               run: () => {
                 undoManager.redo();
-                return true;
-              },
-            },
-            {
-              key: "Mod-s",
-              run: () => {
-                updatePreview();
                 return true;
               },
             },
@@ -141,11 +134,6 @@
       effects: EditorView.scrollIntoView(pos, { y: "start" }),
     });
     view.focus();
-  }
-
-  export function updatePreview() {
-    const script = getContent();
-    preview.generatePreview(script);
   }
 </script>
 

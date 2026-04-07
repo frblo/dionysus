@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/state";
 
   import {
@@ -21,7 +20,6 @@
     PanelFocus,
   } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
-  import init from "$lib/converter/pkg/converter";
 
   const COLORS = [
     "#e83d84", // cerise
@@ -67,15 +65,6 @@
     editorViewSettings.sidebarMenuOpen =
       editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
   }
-
-  function updatePreview() {
-    editorRef?.updatePreview();
-  }
-
-  onMount(async () => {
-    await init();
-    updatePreview();
-  });
 </script>
 
 <header
@@ -106,13 +95,6 @@
       title="Sync cursor position"
     >
       <ArrowLeftRight />
-    </button>
-
-    <button
-      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
-      onclick={updatePreview}
-    >
-      Run Preview
     </button>
 
     <button
