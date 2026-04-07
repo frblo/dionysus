@@ -5,7 +5,7 @@
     Download,
     ExclamationCircle,
     FileText,
-    ArrowLeftRight,
+    BoxArrowInDownRight,
   } from "svelte-bootstrap-icons";
 
   import Editor from "$lib/editor/Editor.svelte";
@@ -73,6 +73,15 @@
   <div class="flex items-center gap-2 mt-5 ml-auto">
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() =>
+        preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0)}
+      title="Sync preview to cursor position"
+    >
+      <BoxArrowInDownRight />
+    </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
       onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
     >
       {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
@@ -86,16 +95,6 @@
       <option value={PanelFocus.EditorOnly}>Editor only</option>
       <option value={PanelFocus.PreviewOnly}>Preview only</option>
     </select>
-
-    <button
-      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
-      onclick={() => {
-        preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0);
-      }}
-      title="Sync cursor position"
-    >
-      <ArrowLeftRight />
-    </button>
 
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
