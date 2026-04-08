@@ -14,6 +14,7 @@
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
+  import { editor } from "$lib/state/editor.svelte";
   import { sceneScanner } from "$lib/state/scenes.svelte";
   import {
     createTrailingSpaces,
@@ -114,6 +115,11 @@
     if (!view) return;
     setVimEnabled(view, userSettings.vimEnabled);
     setTrailingSpacesEnabled(view, userSettings.highlighTrailingSpacesEnabled);
+  });
+
+  $effect(() => {
+    editor.scrollTick;
+    jumpToLine(editor.targetLine);
   });
 
   export function getContent() {
