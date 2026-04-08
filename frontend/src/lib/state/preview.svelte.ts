@@ -1,13 +1,26 @@
 import { generate_html } from "$lib/converter/pkg/converter";
 
-export const preview = $state({
-  html: "",
-});
+class PreviewState {
+  html = $state("");
+  targetLine = $state(0);
+  scrollTick = $state(0);
+  scrollBehavior: ScrollLogicalPosition = $state("nearest");
 
-export function generatePreview(script: string) {
-  if (script == "") {
-    preview.html = "";
-    return;
-  }
-  preview.html = generate_html(script);
+  generatePreview = (script: string) => {
+    this.html = generate_html(script);
+  };
+
+  scrollToLine = (line: number) => {
+    this.targetLine = line;
+    this.scrollTick++;
+    this.scrollBehavior = "nearest";
+  };
+
+  jumpToLine = (line: number) => {
+    this.targetLine = line;
+    this.scrollTick++;
+    this.scrollBehavior = "start";
+  };
 }
+
+export const preview = new PreviewState();

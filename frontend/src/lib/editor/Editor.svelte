@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
@@ -13,7 +13,8 @@
 
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
-  import { generatePreview } from "$lib/state/preview.svelte";
+  import { preview } from "$lib/state/preview.svelte";
+  import { editor } from "$lib/state/editor.svelte";
   import { sceneScanner } from "$lib/state/scenes.svelte";
   import {
     createTrailingSpaces,
@@ -38,11 +39,6 @@
   let view: EditorView | null = null;
   let provider: WebsocketProvider | null = null;
 
-  export function updatePreview() {
-    const script = getContent();
-    generatePreview(script);
-  }
-
   onMount(() => {
     const ydoc = new Y.Doc();
     provider = new WebsocketProvider(wsUrl, room, ydoc);
@@ -52,11 +48,13 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vimExt = createVim(undoManager, updatePreview);
+    const vimExt = createVim(undoManager);
     const trailingSpaces = createTrailingSpaces();
-    const debouncedPreview = debounce((text: string) => {
-      generatePreview(text);
-    }, 300);
+    const debouncedPreview = debounce(async (text: string, line: number) => {
+      preview.generatePreview(text);
+      await tick();
+      preview.scrollToLine(line);
+    }, 50);
 
     view = new EditorView({
       parent: editorEl,
@@ -84,20 +82,17 @@
                 return true;
               },
             },
-            {
-              key: "Mod-s",
-              run: () => {
-                updatePreview();
-                return true;
-              },
-            },
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
           sceneScanner,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              debouncedPreview(update.state.doc.toString());
+              const head = update.state.selection.main.head;
+              debouncedPreview(
+                update.state.doc.toString(),
+                update.state.doc.lineAt(head).number,
+              );
             }
           }),
           basicSetup,
@@ -122,23 +117,28 @@
     setTrailingSpacesEnabled(view, userSettings.highlighTrailingSpacesEnabled);
   });
 
-  export function updateUser(user: { name: string; color: string }) {
-    if (provider) {
-      provider.awareness.setLocalStateField("user", user);
-    }
-  }
+  $effect(() => {
+    editor.scrollTick;
+    jumpToLine(editor.targetLine);
+  });
 
   export function getContent() {
     return view ? view.state.doc.toString() : "";
   }
 
-  export function scrollIntoView(pos: number) {
-    if (!view) {
-      return;
-    }
+  export function getCursorLine() {
+    if (!view) return 0;
+    const head = view.state.selection.main.head;
+    return view.state.doc.lineAt(head).number;
+  }
+
+  export function jumpToLine(line: number) {
+    if (!view) return;
+
+    const pos = view.state.doc.line(line).from;
     view.dispatch({
       selection: { anchor: pos, head: pos },
-      scrollIntoView: true,
+      effects: EditorView.scrollIntoView(pos, { y: "start" }),
     });
     view.focus();
   }

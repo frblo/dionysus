@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/state";
 
   import {
     Download,
     ExclamationCircle,
     FileText,
+    BoxArrowInDownRight,
   } from "svelte-bootstrap-icons";
 
   import Editor from "$lib/editor/Editor.svelte";
@@ -19,7 +19,7 @@
     SidebarMenus,
     PanelFocus,
   } from "$lib/state/settings.svelte";
-  import init from "$lib/converter/pkg/converter";
+  import { preview } from "$lib/state/preview.svelte";
 
   const COLORS = [
     "#e83d84", // cerise
@@ -65,21 +65,21 @@
     editorViewSettings.sidebarMenuOpen =
       editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
   }
-
-  function updatePreview() {
-    editorRef?.updatePreview();
-  }
-
-  onMount(async () => {
-    await init();
-    updatePreview();
-  });
 </script>
 
 <header
   class="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-gray-700 shadow-md z-10"
 >
   <div class="flex items-center gap-2 mt-5 ml-auto">
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() =>
+        preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0)}
+      title="Sync preview to cursor position"
+    >
+      <BoxArrowInDownRight />
+    </button>
+
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
       onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
@@ -95,13 +95,6 @@
       <option value={PanelFocus.EditorOnly}>Editor only</option>
       <option value={PanelFocus.PreviewOnly}>Preview only</option>
     </select>
-
-    <button
-      class="px-4 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 shadow-lg transition h-8 uppercase tracking-tight"
-      onclick={updatePreview}
-    >
-      Run Preview
-    </button>
 
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"

@@ -2,11 +2,13 @@
   import { slide } from "svelte/transition";
   import { editorViewSettings, SidebarMenus } from "$lib/state/settings.svelte";
   import { scenes } from "$lib/state/scenes.svelte";
+  import { preview } from "$lib/state/preview.svelte";
 
   let { editorRef } = $props();
 
-  function handleSceneClick(pos: number) {
-    editorRef?.scrollIntoView(pos);
+  function handleSceneClick(line: number) {
+    preview.jumpToLine(line);
+    editorRef?.jumpToLine(line);
   }
 </script>
 
@@ -30,7 +32,7 @@
         {#each scenes.list as scene, index}
           <button
             class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#37373d] hover:text-white transition-colors truncate border-l-2 border-transparent focus:border-blue-500 outline-none"
-            onclick={() => handleSceneClick(scene.pos)}
+            onclick={() => handleSceneClick(scene.line)}
           >
             <span class="text-gray-600">{index + 1}.</span>
             {scene.name || "Untitled Scene"}
