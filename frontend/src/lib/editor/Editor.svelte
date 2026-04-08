@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
@@ -49,10 +49,11 @@
 
     const vimExt = createVim(undoManager);
     const trailingSpaces = createTrailingSpaces();
-    const debouncedPreview = debounce((text: string, line: number) => {
+    const debouncedPreview = debounce(async (text: string, line: number) => {
       preview.generatePreview(text);
+      await tick();
       preview.scrollToLine(line);
-    }, 300);
+    }, 50);
 
     view = new EditorView({
       parent: editorEl,

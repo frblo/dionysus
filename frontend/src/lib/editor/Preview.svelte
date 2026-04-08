@@ -19,6 +19,7 @@
 
   $effect(() => {
     if (previewEl) {
+      preview.scrollTick;
       scrollPreviewToLine(
         preview.targetLine,
         previewEl,
