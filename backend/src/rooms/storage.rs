@@ -25,13 +25,13 @@ pub struct Snapshot {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct SnapshotInfo {
     pub covered_through: LogSeq,
     pub size_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct RoomInfo {
     pub room_id: String,
 

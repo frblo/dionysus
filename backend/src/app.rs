@@ -8,7 +8,7 @@ use tower_http::{
 };
 use tracing::Span;
 
-use crate::{auth, state::AppState, ws};
+use crate::{auth, rooms, state::AppState, ws};
 
 pub fn router(state: AppState) -> Router {
     let serve_dir =
@@ -16,6 +16,7 @@ pub fn router(state: AppState) -> Router {
 
     let app = Router::new()
         .nest("/auth", auth::router())
+        .nest("/rooms/api", rooms::router())
         .route("/rooms/ws/{room_id}", get(ws::handler::ws_handler))
         .fallback_service(serve_dir)
         .with_state(state);

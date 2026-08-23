@@ -123,6 +123,11 @@ impl RoomManager {
         Ok(())
     }
 
+    /// Lists all rooms with metadata.
+    pub async fn list_rooms(&self) -> Result<Vec<storage::RoomInfo>, Error> {
+        self.storage.list_rooms().await
+    }
+
     /// Gets the [`LiveRoom`] for the room if it exists in memory
     async fn get_live(&self, room_id: &str) -> Option<Arc<LiveRoom>> {
         self.live.read().await.get(room_id).cloned()
