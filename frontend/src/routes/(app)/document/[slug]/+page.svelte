@@ -43,8 +43,10 @@
 
   let editorRef = $state(<Editor | null>null);
 
-  let name = page.data.me?.display_name;
-  let color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const name = page.data.me?.display_name;
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+  const roomId = page.data.roomInfo?.room_id;
 
   const editorWidth = $derived(
     editorViewSettings.panelFocus === PanelFocus.EditorOnly
@@ -67,6 +69,10 @@
       editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
   }
 </script>
+
+<svelte:head>
+  <title>Dionysus - {roomId}</title>
+</svelte:head>
 
 <Header title="Editor">
   <button
@@ -126,7 +132,7 @@
       style="width: {editorWidth}"
     >
       <div class="flex-1 overflow-auto">
-        <Editor bind:this={editorRef} user={{ name, color }} />
+        <Editor bind:this={editorRef} room={roomId} user={{ name, color }} />
       </div>
     </section>
 

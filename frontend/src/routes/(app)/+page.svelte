@@ -5,8 +5,6 @@
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
-  console.log(data);
-  console.log("hl");
 </script>
 
 <Header title="Screenplays"></Header>

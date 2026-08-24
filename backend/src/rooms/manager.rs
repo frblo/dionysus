@@ -128,6 +128,11 @@ impl RoomManager {
         self.storage.list_rooms().await
     }
 
+    /// Gets room info
+    pub async fn room_info(&self, room_id: &str) -> Result<Option<storage::RoomInfo>, Error> {
+        self.storage.get_room_info(room_id).await
+    }
+
     /// Gets the [`LiveRoom`] for the room if it exists in memory
     async fn get_live(&self, room_id: &str) -> Option<Arc<LiveRoom>> {
         self.live.read().await.get(room_id).cloned()

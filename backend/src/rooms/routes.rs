@@ -1,4 +1,10 @@
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+};
 
 use crate::{
     auth::AuthSession,
@@ -7,7 +13,9 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/list", get(list_rooms))
+    Router::new()
+        .route("/list", get(list_rooms))
+        .route("/room_info/{room_id}", get(room_info))
 }
 
 async fn list_rooms(
@@ -16,6 +24,18 @@ async fn list_rooms(
 ) -> Result<Json<Vec<RoomInfo>>, rooms::Error> {
     let _ = session;
     Ok(Json(state.rooms.list_rooms().await?))
+}
+
+async fn room_info(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+    Path(room_id): Path<String>,
+) -> Result<Json<RoomInfo>, rooms::Error> {
+    let _ = session;
+    match state.rooms.room_info(&room_id).await? {
+        Some(info) => Ok(Json(info)),
+        None => Err(rooms::Error::NotFound),
+    }
 }
 
 impl IntoResponse for rooms::Error {
