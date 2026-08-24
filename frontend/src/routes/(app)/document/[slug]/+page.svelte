@@ -74,7 +74,7 @@
   <title>Dionysus - {roomId}</title>
 </svelte:head>
 
-<Header title="Editor">
+<Header title={roomId}>
   <button
     class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
     onclick={() =>

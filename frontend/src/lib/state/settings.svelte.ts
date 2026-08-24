@@ -19,3 +19,14 @@ export const editorViewSettings = $state({
   exportMenuOpen: false,
   panelFocus: PanelFocus.Both,
 });
+
+export enum HomeModals {
+  Delete,
+  Rename,
+  Create,
+  None,
+}
+
+export const homeModalSettings = $state({
+  modalOpen: HomeModals.None,
+});
