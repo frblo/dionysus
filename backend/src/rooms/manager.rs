@@ -36,7 +36,6 @@ pub struct RoomManager {
     live: Arc<RwLock<HashMap<String, Arc<LiveRoom>>>>,
     bcast_capacity: usize,
     snapshot_every_n_updates: u64,
-    persist_queue_capacity: usize,
 }
 
 impl RoomManager {
@@ -44,14 +43,12 @@ impl RoomManager {
         storage: Arc<dyn Storage>,
         bcast_capacity: usize,
         snapshot_every_n_updates: u64,
-        persist_queue_capacity: usize,
     ) -> Self {
         Self {
             storage,
             live: Arc::new(RwLock::new(HashMap::new())),
             bcast_capacity,
             snapshot_every_n_updates,
-            persist_queue_capacity,
         }
     }
 
@@ -143,7 +140,7 @@ impl RoomManager {
     ) -> Result<(AwarenessRef, Subscription), Error> {
         let doc = self.load_doc(room_id).await?;
 
-        let (tx, mut rx) = mpsc::channel::<Vec<u8>>(self.persist_queue_capacity);
+        let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let storage = self.storage.clone();
         let room_id_owned = room_id.to_string();
 
@@ -187,10 +184,12 @@ impl RoomManager {
             }
         });
 
+        let room_id_for_sub = room_id.to_string();
         let sub = doc
             .observe_update_v1(move |_txn, e| {
-                // Attempt to send if full we drop.
-                let _ = tx.try_send(e.update.clone());
+                if let Err(e) = tx.send(e.update.clone()) {
+                    eprintln!("room={room_id_for_sub} persist task is gone, update dropped: {e}");
+                }
             })
             .expect("Subscription function should work.");
 

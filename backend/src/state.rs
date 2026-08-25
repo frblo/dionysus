@@ -19,7 +19,7 @@ impl AppState {
         Self {
             db,
             auth,
-            rooms: RoomManager::new(Arc::new(storage), 32, 100, 1024),
+            rooms: RoomManager::new(Arc::new(storage), 32, 100),
         }
     }
 }
