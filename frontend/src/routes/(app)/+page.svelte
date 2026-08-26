@@ -3,7 +3,7 @@
   import Sidebar from "$lib/common/Sidebar.svelte";
   import {
     FileEarmarkPlus,
-    FileEarmarkText,
+    FileEarmarkTextFill,
     Trash,
   } from "svelte-bootstrap-icons";
   import type { PageProps } from "./$types";
@@ -60,6 +60,24 @@
     gallaryModalSettings.modalOpen = modal;
   }
 
+  function stringToColor(str: string): string {
+    // djb2 hash function
+    let hash = 5381;
+
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) + hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+
+    const r = (hash & 0xff0000) >> 16;
+    const g = (hash & 0x00ff00) >> 8;
+    const b = hash & 0x0000ff;
+
+    const toHex = (n: number) => n.toString(16).padStart(2, "0");
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
   const roomList = data.roomList;
 </script>
 
@@ -89,10 +107,11 @@
         >
           <div class="flex h-full flex-col items-center">
             <div class="flex flex-1 items-center justify-center">
-              <FileEarmarkText
+              <FileEarmarkTextFill
                 width="48"
                 height="48"
                 class="text-gray-400 group-hover:text-gray-300 transition-colors"
+                fill={stringToColor(room.room_id)}
               />
             </div>
             <span
