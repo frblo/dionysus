@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
+use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
@@ -29,10 +30,10 @@ async fn list_rooms(
 async fn room_info(
     AuthSession(session): AuthSession,
     State(state): State<AppState>,
-    Path(room_id): Path<String>,
+    Path(room_id): Path<Uuid>,
 ) -> Result<Json<RoomInfo>, rooms::Error> {
     let _ = session;
-    match state.rooms.room_info(&room_id).await? {
+    match state.rooms.room_info(room_id).await? {
         Some(info) => Ok(Json(info)),
         None => Err(rooms::Error::NotFound),
     }

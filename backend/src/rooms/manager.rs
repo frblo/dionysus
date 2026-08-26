@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use tokio::sync::{RwLock, mpsc, watch};
 use tracing::Instrument;
+use uuid::Uuid;
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, Subscription, Transact};
@@ -47,7 +48,7 @@ impl LiveRoom {
 #[derive(Clone)]
 pub struct RoomManager {
     storage: Arc<dyn Storage>,
-    live: Arc<RwLock<HashMap<String, Arc<LiveRoom>>>>,
+    live: Arc<RwLock<HashMap<Uuid, Arc<LiveRoom>>>>,
     bcast_capacity: usize,
     snapshot_every_n_updates: u64,
 }
@@ -69,7 +70,7 @@ impl RoomManager {
     /// Aquire the [`LiveRoom`] for the `room_id` or attempt to cretate it
     /// if it doesn't already exist.
     #[tracing::instrument(skip_all, fields(room_id = %room_id))]
-    pub async fn connect(&self, room_id: &str) -> Result<Arc<LiveRoom>, Error> {
+    pub async fn connect(&self, room_id: Uuid) -> Result<Arc<LiveRoom>, Error> {
         // Check if it exists live
         let r = if let Some(r) = self.get_live(room_id).await {
             r
@@ -84,8 +85,8 @@ impl RoomManager {
 
     /// Release one connection. If it's the last we evict the room from memory
     #[tracing::instrument(skip_all, fields(room_id = %room_id))]
-    pub async fn disconnect(&self, room_id: &str) {
-        let Some(room) = self.live.read().await.get(room_id).cloned() else {
+    pub async fn disconnect(&self, room_id: Uuid) {
+        let Some(room) = self.live.read().await.get(&room_id).cloned() else {
             return;
         };
 
@@ -96,25 +97,21 @@ impl RoomManager {
 
             // Re-check so no one else has changed it (e.g. a reconnect
             // during the drain wait above, or another eviction).
-            if let Some(current) = guard.get(room_id)
+            if let Some(current) = guard.get(&room_id)
                 && Arc::ptr_eq(current, &room)
                 && current.conn_count.load(Ordering::Relaxed) == 0
             {
                 tracing::info!("evicting room from memory (no active connections)");
-                guard.remove(room_id);
+                guard.remove(&room_id);
             }
         }
     }
 
     /// Create a new room in the storage so a [`LiveRoom`] can be created later.
-    pub async fn create_room(&self, room_id: &str) -> Result<(), Error> {
-        let exists = self.storage.room_exists(room_id).await?;
-        if exists {
-            return Err(Error::AlreadyExists);
-        }
+    pub async fn create_room(&self, room_name: &str) -> Result<(), Error> {
         self.storage
             .create_room(
-                room_id,
+                room_name,
                 storage::CreateRoomOptions {
                     ..Default::default()
                 },
@@ -129,21 +126,21 @@ impl RoomManager {
     }
 
     /// Gets room info
-    pub async fn room_info(&self, room_id: &str) -> Result<Option<storage::RoomInfo>, Error> {
+    pub async fn room_info(&self, room_id: Uuid) -> Result<Option<storage::RoomInfo>, Error> {
         self.storage.get_room_info(room_id).await
     }
 
     /// Gets the [`LiveRoom`] for the room if it exists in memory
-    async fn get_live(&self, room_id: &str) -> Option<Arc<LiveRoom>> {
-        self.live.read().await.get(room_id).cloned()
+    async fn get_live(&self, room_id: Uuid) -> Option<Arc<LiveRoom>> {
+        self.live.read().await.get(&room_id).cloned()
     }
 
     /// Creates a [`LiveRoom`] for the room, if it already exists return the existing
     /// [`LiveRoom`]
     #[tracing::instrument(skip_all, fields(room_id = %room_id))]
-    async fn create_room_live(&self, room_id: &str) -> Result<Arc<LiveRoom>, Error> {
+    async fn create_room_live(&self, room_id: Uuid) -> Result<Arc<LiveRoom>, Error> {
         let mut guard = self.live.write().await;
-        if let Some(r) = guard.get(room_id).cloned() {
+        if let Some(r) = guard.get(&room_id).cloned() {
             return Ok(r);
         }
 
@@ -161,13 +158,13 @@ impl RoomManager {
             persisted,
         });
 
-        guard.insert(room_id.to_string(), room.clone());
+        guard.insert(room_id, room.clone());
         Ok(room)
     }
 
     async fn make_awareness_and_persitence(
         &self,
-        room_id: &str,
+        room_id: Uuid,
     ) -> Result<
         (
             AwarenessRef,
@@ -181,7 +178,6 @@ impl RoomManager {
 
         let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let storage = self.storage.clone();
-        let room_id_owned = room_id.to_string();
 
         let doc_for_snapshots = doc.clone();
         let snapshot_every = self.snapshot_every_n_updates;
@@ -199,7 +195,7 @@ impl RoomManager {
                 let mut processed: u64 = 0;
 
                 while let Some(update_bytes) = rx.recv().await {
-                    match storage.append_update(&room_id_owned, &update_bytes).await {
+                    match storage.append_update(room_id, &update_bytes).await {
                         Ok(seq) => {
                             last_seq = seq;
                             since_snapshot += 1;
@@ -216,7 +212,7 @@ impl RoomManager {
                                 };
 
                                 // Attempt to store snapshot. On error just log and continue.
-                                match storage.store_snapshot(&room_id_owned, snap).await {
+                                match storage.store_snapshot(room_id, snap).await {
                                     Ok(()) => {
                                         since_snapshot = 0;
                                         tracing::debug!(
@@ -277,7 +273,7 @@ impl RoomManager {
         ))
     }
 
-    async fn load_doc(&self, room_id: &str) -> Result<Doc, Error> {
+    async fn load_doc(&self, room_id: Uuid) -> Result<Doc, Error> {
         let doc = Doc::new();
         let snap = self.storage.load_snapshot_best(room_id, None).await?;
 

@@ -75,7 +75,7 @@
     <div
       class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] auto-rows-min gap-4 content-start w-full"
     >
-      {#each roomList ?? [] as room (room.room_id)}
+      {#each roomList ?? [] as room ((room.room_id, room.room_name))}
         <a
           href="/document/{room.room_id}"
           class="relative group block h-40 rounded-lg border border-gray-700 bg-[#252526] p-4 hover:border-gray-500 hover:bg-[#2d2d2d] transition-colors no-underline"
@@ -91,10 +91,10 @@
               />
             </div>
             <span
-              title={room.room_id}
+              title={room.room_name}
               class="w-full text-center text-xs leading-4 h-12 font-mono break-all text-gray-400 overflow-hidden [mask-image:linear-gradient(to_bottom,black_65%,transparent_100%)]"
             >
-              {room.room_id}
+              {room.room_name}
             </span>
           </div>
 

@@ -10,10 +10,10 @@ use async_trait::async_trait;
 
 use tokio::sync::RwLock;
 
-use yrs::{Doc, ReadTxn, Text, Transact};
+use uuid::Uuid;
 
 pub struct InMemoryStorage {
-    rooms: RwLock<HashMap<String, RoomData>>,
+    rooms: RwLock<HashMap<Uuid, RoomData>>,
 }
 
 pub struct RoomData {
@@ -28,24 +28,24 @@ impl InMemoryStorage {
             rooms: RwLock::new(HashMap::new()),
         };
 
-        storage
-            .create_room(
-                "demo-room-1",
-                CreateRoomOptions {
-                    ..Default::default()
-                },
-            )
-            .await
-            .expect("Initialization calls should work");
-        let _ = storage
-            .append_update(
-                "demo-room-1",
-                &demo_doc()
-                    .transact()
-                    .encode_state_as_update_v1(&yrs::StateVector::default()),
-            )
-            .await
-            .expect("Initialization calls should work");
+        // storage
+        //     .create_room(
+        //         "demo-room-1",
+        //         CreateRoomOptions {
+        //             ..Default::default()
+        //         },
+        //     )
+        //     .await
+        //     .expect("Initialization calls should work");
+        // let _ = storage
+        //     .append_update(
+        //         "demo-room-1",
+        //         &demo_doc()
+        //             .transact()
+        //             .encode_state_as_update_v1(&yrs::StateVector::default()),
+        //     )
+        //     .await
+        //     .expect("Initialization calls should work");
 
         storage
     }
@@ -53,17 +53,17 @@ impl InMemoryStorage {
 
 #[async_trait]
 impl Storage for InMemoryStorage {
-    async fn room_exists(&self, room_id: &str) -> Result<bool, Error> {
-        Ok(self.rooms.read().await.contains_key(room_id))
+    async fn room_exists(&self, room_id: Uuid) -> Result<bool, Error> {
+        Ok(self.rooms.read().await.contains_key(&room_id))
     }
 
     async fn load_updates(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         opts: LoadUpdatesOptions,
     ) -> Result<Vec<UpdateEntry>, Error> {
         let rooms = self.rooms.read().await;
-        let room = rooms.get(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get(&room_id).ok_or(Error::NotFound)?;
 
         let from = opts.from.unwrap_or(0);
         let to = opts.to.unwrap_or(room.info.last_seq);
@@ -79,37 +79,38 @@ impl Storage for InMemoryStorage {
             .collect())
     }
 
-    async fn create_room(&self, room_id: &str, opts: CreateRoomOptions) -> Result<(), Error> {
-        let mut rooms = self.rooms.write().await;
-
-        if rooms.contains_key(room_id) {
-            if opts.fail_if_exists {
-                return Err(Error::AlreadyExists);
-            }
-
-            return Ok(());
-        }
-
-        rooms.insert(
-            room_id.to_string(),
-            RoomData {
-                info: RoomInfo {
-                    room_id: room_id.to_string(),
-                    last_seq: 0,
-                    latest_snapshot: None,
-                },
-                updates: Vec::new(),
-                snapshots: BTreeMap::new(),
-            },
-        );
-
-        Ok(())
+    async fn create_room(&self, room_name: &str, opts: CreateRoomOptions) -> Result<Uuid, Error> {
+        unimplemented!()
+        // let mut rooms = self.rooms.write().await;
+        //
+        // if rooms.contains_key(room_id) {
+        //     if opts.fail_if_exists {
+        //         return Err(Error::AlreadyExists);
+        //     }
+        //
+        //     return Ok(());
+        // }
+        //
+        // rooms.insert(
+        //     room_id.to_string(),
+        //     RoomData {
+        //         info: RoomInfo {
+        //             room_id: room_id.to_string(),
+        //             last_seq: 0,
+        //             latest_snapshot: None,
+        //         },
+        //         updates: Vec::new(),
+        //         snapshots: BTreeMap::new(),
+        //     },
+        // );
+        //
+        // Ok(())
     }
 
-    async fn delete_room(&self, room_id: &str) -> Result<(), Error> {
+    async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
         let mut rooms = self.rooms.write().await;
 
-        rooms.remove(room_id);
+        rooms.remove(&room_id);
 
         Ok(())
     }
@@ -123,14 +124,14 @@ impl Storage for InMemoryStorage {
             .collect())
     }
 
-    async fn get_room_info(&self, room_id: &str) -> Result<Option<RoomInfo>, Error> {
+    async fn get_room_info(&self, room_id: Uuid) -> Result<Option<RoomInfo>, Error> {
         let rooms = self.rooms.write().await;
-        Ok(rooms.get(room_id).map(|x| x.info.clone()))
+        Ok(rooms.get(&room_id).map(|x| x.info.clone()))
     }
 
-    async fn append_update(&self, room_id: &str, update: &[u8]) -> Result<LogSeq, Error> {
+    async fn append_update(&self, room_id: Uuid, update: &[u8]) -> Result<LogSeq, Error> {
         let mut rooms = self.rooms.write().await;
-        let room = rooms.get_mut(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get_mut(&room_id).ok_or(Error::NotFound)?;
 
         let new_seq = room.info.last_seq + 1;
 
@@ -143,7 +144,7 @@ impl Storage for InMemoryStorage {
 
     async fn append_updates(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         updates: &[Vec<u8>],
     ) -> Result<(LogSeq, LogSeq), Error> {
         let first = self.append_update(room_id, &updates[0]).await?;
@@ -156,9 +157,9 @@ impl Storage for InMemoryStorage {
         Ok((first, last))
     }
 
-    async fn store_snapshot(&self, room_id: &str, snapshot: Snapshot) -> Result<(), Error> {
+    async fn store_snapshot(&self, room_id: Uuid, snapshot: Snapshot) -> Result<(), Error> {
         let mut rooms = self.rooms.write().await;
-        let room = rooms.get_mut(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get_mut(&room_id).ok_or(Error::NotFound)?;
 
         if room.snapshots.contains_key(&snapshot.covered_through) {
             return Ok(());
@@ -172,11 +173,11 @@ impl Storage for InMemoryStorage {
 
     async fn load_snapshot_at(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         covered_through: LogSeq,
     ) -> Result<Option<Snapshot>, Error> {
         let rooms = self.rooms.read().await;
-        let room = rooms.get(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get(&room_id).ok_or(Error::NotFound)?;
 
         Ok(room.snapshots.get(&covered_through).map(|bytes| Snapshot {
             covered_through,
@@ -186,11 +187,11 @@ impl Storage for InMemoryStorage {
 
     async fn load_snapshot_best(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         max_covered_through: Option<LogSeq>,
     ) -> Result<Option<Snapshot>, Error> {
         let rooms = self.rooms.read().await;
-        let room = rooms.get(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get(&room_id).ok_or(Error::NotFound)?;
 
         let snapshot = match max_covered_through {
             None => room.snapshots.iter().next_back(),
@@ -203,9 +204,9 @@ impl Storage for InMemoryStorage {
         }))
     }
 
-    async fn list_snapshots(&self, room_id: &str) -> Result<Vec<SnapshotInfo>, Error> {
+    async fn list_snapshots(&self, room_id: Uuid) -> Result<Vec<SnapshotInfo>, Error> {
         let rooms = self.rooms.read().await;
-        let room = rooms.get(room_id).ok_or(Error::NotFound)?;
+        let room = rooms.get(&room_id).ok_or(Error::NotFound)?;
 
         Ok(room
             .snapshots
@@ -216,27 +217,4 @@ impl Storage for InMemoryStorage {
             })
             .collect())
     }
-}
-
-fn demo_doc() -> Doc {
-    let doc = Doc::new();
-    {
-        let txt = doc.get_or_insert_text("codemirror");
-        let mut txn = doc.transact_mut();
-        txt.push(
-            &mut txn,
-            r"EXT. BRICK'S PATIO - DAY
-
-A gorgeous day.  The sun is shining.  But BRICK BRADDOCK, retired police detective, is sitting quietly, contemplating -- something.
-
-The SCREEN DOOR slides open and DICK STEEL, his former partner and fellow retiree, emerges with two cold beers.
-
-STEEL
-Beer's ready!
-
-BRICK
-Are they cold?",
-        );
-    }
-    doc
 }
