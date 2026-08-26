@@ -7,7 +7,12 @@
     Trash,
   } from "svelte-bootstrap-icons";
   import type { PageProps } from "./$types";
-  import { HomeModals, homeModalSettings } from "$lib/state/settings.svelte";
+  import {
+    GallaryModals,
+    gallaryModalSettings,
+  } from "$lib/state/settings.svelte";
+  import { createRoom, deleteRoom } from "$lib/gallary/api";
+  import { redirect } from "@sveltejs/kit";
 
   let { data }: PageProps = $props();
 
@@ -18,41 +23,41 @@
 
   function openCreateModal() {
     createName = "";
-    toggleModal(HomeModals.Create);
+    toggleModal(GallaryModals.Create);
   }
 
   function closeCreateModal() {
-    toggleModal(HomeModals.None);
+    toggleModal(GallaryModals.None);
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!createName.trim()) return;
-    // TODO: call API to create new screenplay
-    console.log("Create screenplay:", createName);
+    const createdRoomId = await createRoom(createName);
     closeCreateModal();
+    redirect(303, `/document/${createdRoomId}`);
   }
 
   function openDeleteModal(id: string) {
     deleteTargetId = id;
     deleteConfirmInput = "";
-    toggleModal(HomeModals.Delete);
+    toggleModal(GallaryModals.Delete);
   }
 
   function closeDeleteModal() {
-    toggleModal(HomeModals.None);
+    toggleModal(GallaryModals.None);
     deleteTargetId = "";
     deleteConfirmInput = "";
   }
 
-  function handleDelete() {
+  async function handleDelete() {
+    // TODO: update page
     if (deleteConfirmInput !== deleteTargetId) return;
-    // TODO: call API to delete screenplay
-    console.log("Delete screenplay:", deleteTargetId);
+    await deleteRoom(deleteTargetId);
     closeDeleteModal();
   }
 
-  function toggleModal(modal: HomeModals) {
-    homeModalSettings.modalOpen = modal;
+  function toggleModal(modal: GallaryModals) {
+    gallaryModalSettings.modalOpen = modal;
   }
 
   const roomList = data.roomList;
@@ -118,7 +123,7 @@
   </main>
 </div>
 
-{#if homeModalSettings.modalOpen == HomeModals.Create}
+{#if gallaryModalSettings.modalOpen == GallaryModals.Create}
   <div class="fixed inset-0 z-50 flex items-center justify-center">
     <div
       class="absolute inset-0 bg-black/50"
@@ -154,7 +159,7 @@
   </div>
 {/if}
 
-{#if homeModalSettings.modalOpen == HomeModals.Delete}
+{#if gallaryModalSettings.modalOpen == GallaryModals.Delete}
   <div class="fixed inset-0 z-50 flex items-center justify-center">
     <div
       class="absolute inset-0 bg-black/50"

@@ -46,9 +46,7 @@ pub struct RoomInfo {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct CreateRoomOptions {
-    pub fail_if_exists: bool,
-}
+pub struct CreateRoomOptions {}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -70,6 +68,9 @@ pub trait Storage: Send + Sync + 'static {
 
     /// Removes all data for the room (metadata, updates, snapshot).
     async fn delete_room(&self, room_id: Uuid) -> Result<(), Error>;
+
+    /// Changes the name of a room
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error>;
 
     /// Lists rooms with metadata.
     async fn list_rooms(&self) -> Result<Vec<RoomInfo>, Error>;

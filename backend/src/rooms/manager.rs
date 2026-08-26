@@ -108,15 +108,25 @@ impl RoomManager {
     }
 
     /// Create a new room in the storage so a [`LiveRoom`] can be created later.
-    pub async fn create_room(&self, room_name: &str) -> Result<(), Error> {
-        self.storage
+    pub async fn create_room(&self, room_name: &str) -> Result<Uuid, Error> {
+        Ok(self
+            .storage
             .create_room(
                 room_name,
                 storage::CreateRoomOptions {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await?)
+    }
+
+    pub async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
+        self.storage.delete_room(room_id).await?;
+        Ok(())
+    }
+
+    pub async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
+        self.storage.rename_room(room_id, new_name).await?;
         Ok(())
     }
 

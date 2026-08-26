@@ -81,30 +81,6 @@ impl Storage for InMemoryStorage {
 
     async fn create_room(&self, room_name: &str, opts: CreateRoomOptions) -> Result<Uuid, Error> {
         unimplemented!()
-        // let mut rooms = self.rooms.write().await;
-        //
-        // if rooms.contains_key(room_id) {
-        //     if opts.fail_if_exists {
-        //         return Err(Error::AlreadyExists);
-        //     }
-        //
-        //     return Ok(());
-        // }
-        //
-        // rooms.insert(
-        //     room_id.to_string(),
-        //     RoomData {
-        //         info: RoomInfo {
-        //             room_id: room_id.to_string(),
-        //             last_seq: 0,
-        //             latest_snapshot: None,
-        //         },
-        //         updates: Vec::new(),
-        //         snapshots: BTreeMap::new(),
-        //     },
-        // );
-        //
-        // Ok(())
     }
 
     async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
@@ -113,6 +89,17 @@ impl Storage for InMemoryStorage {
         rooms.remove(&room_id);
 
         Ok(())
+    }
+
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
+        let mut rooms = self.rooms.write().await;
+        match rooms.get_mut(&room_id) {
+            Some(room) => {
+                room.info.room_name = new_name.to_string();
+                Ok(())
+            }
+            None => Err(Error::NotFound),
+        }
     }
 
     async fn list_rooms(&self) -> Result<Vec<RoomInfo>, Error> {

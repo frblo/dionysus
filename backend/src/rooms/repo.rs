@@ -100,6 +100,12 @@ impl Storage for DatabaseStorage {
     }
 
     async fn create_room(&self, room_name: &str, _opts: CreateRoomOptions) -> Result<Uuid, Error> {
+        if room_name.is_empty() {
+            return Err(Error::InvalidArgument(
+                "Room name cannot be an empty string".to_string(),
+            ));
+        }
+
         let id = sqlx::query_scalar!(
             r#"
             INSERT INTO rooms (room_name, last_seq)
@@ -124,6 +130,21 @@ impl Storage for DatabaseStorage {
         .execute(self.db.pool())
         .await
         .map_err(Error::from)?;
+        Ok(())
+    }
+
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
+        sqlx::query!(
+            r#"UPDATE rooms
+                SET room_name = $1
+                WHERE room_id = $2"#,
+            new_name,
+            room_id,
+        )
+        .execute(self.db.pool())
+        .await
+        .map_err(Error::from)?;
+
         Ok(())
     }
 

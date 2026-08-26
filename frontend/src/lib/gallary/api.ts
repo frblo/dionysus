@@ -1,0 +1,22 @@
+export async function createRoom(name: String): Promise<String> {
+  const response = await fetch(`/rooms/api/create/${name}`, {
+    method: "POST",
+    credentials: "include"
+  });
+  const roomId: String = await response.json();
+  return roomId;
+}
+
+export async function renameRoom(id: String, name: String) {
+  await fetch(`/rooms/api/rename/${id}/${name}`, {
+    method: "POST",
+    credentials: "include"
+  });
+}
+
+export async function deleteRoom(id: String) {
+  await fetch(`/rooms/api/delete/${id}`, {
+    method: "POST",
+    credentials: "include"
+  });
+}
