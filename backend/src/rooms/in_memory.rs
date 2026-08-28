@@ -79,8 +79,36 @@ impl Storage for InMemoryStorage {
             .collect())
     }
 
-    async fn create_room(&self, room_name: &str, opts: CreateRoomOptions) -> Result<Uuid, Error> {
-        unimplemented!()
+    async fn create_room(
+        &self,
+        room_name: &str,
+        _opts: CreateRoomOptions,
+    ) -> Result<RoomInfo, Error> {
+        if room_name.is_empty() {
+            return Err(Error::InvalidArgument(
+                "Room name cannot be an empty string".to_string(),
+            ));
+        }
+
+        let mut rooms = self.rooms.write().await;
+
+        let info = RoomInfo {
+            room_id: Uuid::new_v4(),
+            room_name: room_name.to_string(),
+            last_seq: 0,
+            latest_snapshot: None,
+        };
+
+        rooms.insert(
+            info.room_id,
+            RoomData {
+                info: info.clone(),
+                updates: Vec::new(),
+                snapshots: BTreeMap::new(),
+            },
+        );
+
+        Ok(info)
     }
 
     async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
@@ -91,12 +119,12 @@ impl Storage for InMemoryStorage {
         Ok(())
     }
 
-    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<RoomInfo, Error> {
         let mut rooms = self.rooms.write().await;
         match rooms.get_mut(&room_id) {
             Some(room) => {
                 room.info.room_name = new_name.to_string();
-                Ok(())
+                Ok(room.info.clone())
             }
             None => Err(Error::NotFound),
         }

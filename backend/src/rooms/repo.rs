@@ -99,25 +99,42 @@ impl Storage for DatabaseStorage {
         Ok(r.exists)
     }
 
-    async fn create_room(&self, room_name: &str, _opts: CreateRoomOptions) -> Result<Uuid, Error> {
+    async fn create_room(
+        &self,
+        room_name: &str,
+        _opts: CreateRoomOptions,
+    ) -> Result<RoomInfo, Error> {
         if room_name.is_empty() {
             return Err(Error::InvalidArgument(
                 "Room name cannot be an empty string".to_string(),
             ));
         }
 
-        let id = sqlx::query_scalar!(
+        let mut tx: Transaction<'_, Postgres> =
+            self.db.pool().begin().await.map_err(Error::from)?;
+
+        let row = sqlx::query!(
             r#"
             INSERT INTO rooms (room_name, last_seq)
                 VALUES ($1, 0)
-            RETURNING room_id"#,
+            RETURNING
+                room_id,
+                room_name,
+                last_seq"#,
             room_name
         )
-        .fetch_one(self.db.pool())
+        .fetch_one(&mut *tx)
         .await
         .map_err(Error::from)?;
 
-        Ok(id)
+        tx.commit().await.map_err(Error::from)?;
+
+        Ok(RoomInfo {
+            room_id: row.room_id,
+            room_name: row.room_name,
+            last_seq: row.last_seq as u64,
+            latest_snapshot: None,
+        })
     }
 
     async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
@@ -133,19 +150,32 @@ impl Storage for DatabaseStorage {
         Ok(())
     }
 
-    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
-        sqlx::query!(
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<RoomInfo, Error> {
+        let row = sqlx::query!(
             r#"UPDATE rooms
                 SET room_name = $1
-                WHERE room_id = $2"#,
+                WHERE room_id = $2
+                RETURNING
+                    room_id,
+                    room_name,
+                    last_seq"#,
             new_name,
             room_id,
         )
-        .execute(self.db.pool())
+        .fetch_optional(self.db.pool())
         .await
         .map_err(Error::from)?;
 
-        Ok(())
+        let Some(row) = row else {
+            return Err(Error::NotFound);
+        };
+
+        Ok(RoomInfo {
+            room_id: row.room_id,
+            room_name: row.room_name,
+            last_seq: row.last_seq as u64,
+            latest_snapshot: None,
+        })
     }
 
     async fn list_rooms(&self) -> Result<Vec<RoomInfo>, Error> {

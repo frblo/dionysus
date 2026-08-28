@@ -12,7 +12,9 @@
     gallaryModalSettings,
   } from "$lib/state/settings.svelte";
   import { createRoom, deleteRoom } from "$lib/gallary/api";
-  import { redirect } from "@sveltejs/kit";
+  import type { RoomInfo } from "./+page";
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
 
   let { data }: PageProps = $props();
 
@@ -34,7 +36,7 @@
     if (!createName.trim()) return;
     const createdRoomId = await createRoom(createName);
     closeCreateModal();
-    redirect(303, `/document/${createdRoomId}`);
+    goto(`/document/${createdRoomId}`);
   }
 
   function openDeleteModal(id: string) {
@@ -78,7 +80,30 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  const roomList = data.roomList;
+  let roomList = $state(data.roomList);
+
+  onMount(() => {
+    const eventSource = new EventSource("/rooms/api/sse");
+
+    eventSource.addEventListener("room-added", (event) => {
+      const room = JSON.parse(event.data);
+      const roomInfo: RoomInfo = { id: room.room_id, name: room.room_name };
+      roomList.set(roomInfo.id, roomInfo);
+    });
+
+    eventSource.addEventListener("room-updated", (event) => {
+      const room = JSON.parse(event.data);
+      roomList.set(room.room_id, { id: room.room_id, name: room.room_name });
+    });
+
+    eventSource.addEventListener("room-removed", (event) => {
+      roomList.delete(event.data);
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  });
 </script>
 
 <Header title="Screenplays"></Header>
@@ -98,11 +123,11 @@
     <div
       class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] auto-rows-min gap-4 content-start w-full"
     >
-      {#each roomList ?? [] as room ((room.room_id, room.room_name))}
+      {#each roomList as [_, room]}
         <a
-          href="/document/{room.room_id}"
+          href="/document/{room.id}"
           class="relative group block h-40 rounded-lg border border-gray-700 bg-[#252526] p-4 hover:border-gray-500 hover:bg-[#2d2d2d] transition-colors no-underline"
-          onmouseenter={() => (hoveredRoomId = room.room_id)}
+          onmouseenter={() => (hoveredRoomId = room.id)}
           onmouseleave={() => (hoveredRoomId = null)}
         >
           <div class="flex h-full flex-col items-center">
@@ -111,25 +136,25 @@
                 width="48"
                 height="48"
                 class="text-gray-400 group-hover:text-gray-300 transition-colors"
-                fill={stringToColor(room.room_id)}
+                fill={stringToColor(room.id)}
               />
             </div>
             <span
-              title={room.room_name}
+              title={room.name}
               class="w-full text-center text-xs leading-4 h-12 font-mono break-all text-gray-400 overflow-hidden [mask-image:linear-gradient(to_bottom,black_65%,transparent_100%)]"
             >
-              {room.room_name}
+              {room.name}
             </span>
           </div>
 
-          {#if hoveredRoomId === room.room_id}
+          {#if hoveredRoomId === room.id}
             <button
               class="absolute top-2 right-2 p-1.5 rounded bg-red-600/80 hover:bg-red-500 text-white text-xs transition-colors z-10"
               title="Delete screenplay"
               onclick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openDeleteModal(room.room_id);
+                openDeleteModal(room.id);
               }}
               onmouseenter={(e) => e.stopPropagation()}
             >
@@ -190,8 +215,11 @@
     >
       <h2 class="text-sm font-medium text-red-400 mb-2">Delete Screenplay</h2>
       <p class="text-xs text-gray-400 mb-4">
-        Type <span class="font-mono text-gray-300">{deleteTargetId}</span> to confirm
-        deletion.
+        Type
+        <br />
+        <span class="font-mono text-gray-300">{deleteTargetId}</span>
+        <br />
+        to confirm deletion.
       </p>
       <input
         type="text"

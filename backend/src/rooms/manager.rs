@@ -10,7 +10,7 @@ use yrs::{Doc, ReadTxn, Subscription, Transact};
 use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
-use crate::rooms::storage::{self, LoadUpdatesOptions, Storage};
+use crate::rooms::storage::{self, LoadUpdatesOptions, RoomInfo, Storage};
 
 pub struct LiveRoom {
     pub bcast: Arc<BroadcastGroup>,
@@ -108,7 +108,7 @@ impl RoomManager {
     }
 
     /// Create a new room in the storage so a [`LiveRoom`] can be created later.
-    pub async fn create_room(&self, room_name: &str) -> Result<Uuid, Error> {
+    pub async fn create_room(&self, room_name: &str) -> Result<RoomInfo, Error> {
         Ok(self
             .storage
             .create_room(
@@ -125,9 +125,8 @@ impl RoomManager {
         Ok(())
     }
 
-    pub async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<(), Error> {
-        self.storage.rename_room(room_id, new_name).await?;
-        Ok(())
+    pub async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<RoomInfo, Error> {
+        self.storage.rename_room(room_id, new_name).await
     }
 
     /// Lists all rooms with metadata.

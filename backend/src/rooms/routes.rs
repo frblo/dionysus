@@ -1,10 +1,17 @@
+use std::convert::Infallible;
+
 use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{
+        IntoResponse, Sse,
+        sse::{Event, KeepAlive},
+    },
     routing::{get, post},
 };
+use futures_util::Stream;
+use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use uuid::Uuid;
 
 use crate::{
@@ -20,6 +27,40 @@ pub fn router() -> Router<AppState> {
         .route("/rename/{room_id}/{room_name}", post(rename))
         .route("/create/{room_name}", post(create))
         .route("/delete/{room_id}", post(delete))
+        .route("/sse", get(sse_handler))
+}
+
+#[derive(Debug, Clone)]
+pub enum RoomDelta {
+    Added(RoomInfo),
+    Updated(RoomInfo),
+    Removed(Uuid),
+}
+
+async fn sse_handler(
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let rx_stream = BroadcastStream::new(state.gallary_tx.subscribe());
+
+    let stream = rx_stream.filter_map(|res| {
+        let delta = res.ok()?;
+
+        let event = match delta {
+            RoomDelta::Added(room_info) => Event::default()
+                .event("room-added")
+                .data(serde_json::to_string(&room_info).unwrap()),
+            RoomDelta::Updated(room_info) => Event::default()
+                .event("room-updated")
+                .data(serde_json::to_string(&room_info).unwrap()),
+            RoomDelta::Removed(room_id) => Event::default()
+                .event("room-removed")
+                .data(room_id.to_string()),
+        };
+
+        Some(Ok(event))
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 async fn list_rooms(
@@ -46,7 +87,9 @@ async fn rename(
     Path(room_id): Path<Uuid>,
     Path(room_name): Path<String>,
 ) -> Result<(), rooms::Error> {
-    Ok(state.rooms.rename_room(room_id, &room_name).await?)
+    let info = state.rooms.rename_room(room_id, &room_name).await?;
+    let _ = state.gallary_tx.send(RoomDelta::Updated(info));
+    Ok(())
 }
 
 async fn create(
@@ -54,7 +97,9 @@ async fn create(
     State(state): State<AppState>,
     Path(room_name): Path<String>,
 ) -> Result<Json<Uuid>, rooms::Error> {
-    Ok(Json(state.rooms.create_room(&room_name).await?))
+    let info = state.rooms.create_room(&room_name).await?;
+    let _ = state.gallary_tx.send(RoomDelta::Added(info.clone()));
+    Ok(Json(info.room_id))
 }
 
 async fn delete(
@@ -62,7 +107,9 @@ async fn delete(
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
 ) -> Result<(), rooms::Error> {
-    Ok(state.rooms.delete_room(room_id).await?)
+    state.rooms.delete_room(room_id).await?;
+    let _ = state.gallary_tx.send(RoomDelta::Removed(room_id));
+    Ok(())
 }
 
 impl IntoResponse for rooms::Error {
