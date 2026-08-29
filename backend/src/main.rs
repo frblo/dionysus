@@ -19,12 +19,20 @@ async fn main() -> anyhow::Result<()> {
 
     logging::init_tracing(&config)?;
 
+    std::panic::set_hook(Box::new(|info| {
+        tracing::error!(panic = %info, "panic occurred");
+    }));
+
     let addr: SocketAddr = SocketAddr::new(config.listener.ip, config.listener.port);
+
     let pool = PgPool::connect(&config.database.url).await?;
+    tracing::info!("connected to database");
+
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to apply database migrations");
+    tracing::info!("database migrations applied");
 
     let auth = AuthManager::new(&config).await?;
 
@@ -33,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
     let app = app::router(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    println!("Listening on {}", listener.local_addr().unwrap());
+    tracing::info!(addr = %listener.local_addr().unwrap(), "listening for connections");
 
     axum::serve(listener, app.into_make_service())
         .await
