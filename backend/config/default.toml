@@ -1,7 +1,12 @@
+# Built into the binary as the base config layer. Values here are the
+# production defaults. Override per-environment via /etc/dionysus/config.toml,
+# DIONYSUS_CONFIG, or DIONYSUS_ env vars. See README.md for more information.
+# See backend/config/dev.toml for local development overrides.
+
 [listener]
 ip = "0.0.0.0"
 port = "8000"
 
 [logging]
-filter = "info,tower_http=debug"
-json = false
+filter = "info"
+json = true

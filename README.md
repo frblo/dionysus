@@ -23,8 +23,8 @@ For production deployments, use the published Docker image and configure it as d
 | database.url | Yes | postgresql://USER:PWD@HOST:PORT/DB |
 | oidc.external_base_url | Yes | Base for externally reachable url. E.g. "https://your-domain.com" |
 | oidc.providers.<name> | Yes | See [OIDC provider config](#oidc-providers-config) section |
-| logging.filter | No | Default: "info,tower_http=debug" |
-| logging.json | No | Default: False |
+| logging.filter | No | [`tracing_subscriber` env-filter](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) directive. Default: "info" |
+| logging.json | No | Emit logs as JSON. Default: true |
 | listener.ip | No | Default: 0.0.0.0 (listen everywhere) |
 | listener.port | No | Default: 8000 |
 
