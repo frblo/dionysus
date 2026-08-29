@@ -82,14 +82,17 @@ impl AuthManager {
         self.sessions.get(session_id).await
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn logout(&self, session_id: &str) {
         self.sessions.remove(session_id).await;
+        tracing::info!("session logged out");
     }
 
     pub fn provider_ids(&self) -> Vec<String> {
         self.oidc.provider_ids()
     }
 
+    #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn start_login(&self, provider_id: &str) -> Result<String, AuthError> {
         let provider = self
             .oidc
@@ -130,10 +133,12 @@ impl AuthManager {
             )
             .await;
 
+        tracing::info!("login redirect issued");
         Ok(auth_url.to_string())
     }
 
     /// The [`String`] returned is the session id for the completed login.
+    #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn finish_login(
         &self,
         provider_id: &str,
@@ -162,7 +167,7 @@ impl AuthManager {
             .request_async(async_http_client)
             .await
             .map_err(|e| {
-                tracing::error!("token exhange failure {e:?}");
+                tracing::warn!(error = %e, "OIDC token exchange failed");
                 AuthError::TokenExchange
             })?;
 
@@ -188,9 +193,13 @@ impl AuthManager {
 
         let session_id = rand_str(64);
         self.sessions
-            .insert(session_id.clone(), Session::new(user_id, display_name))
+            .insert(
+                session_id.clone(),
+                Session::new(user_id.clone(), display_name),
+            )
             .await;
 
+        tracing::info!(user_id = %user_id, "login succeeded");
         Ok(session_id)
     }
 }
@@ -224,7 +233,7 @@ struct ErrorBody {
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> axum::response::Response {
-        tracing::warn!(error = ?self, "authentication error");
+        tracing::warn!(error = %self, "authentication error");
 
         let (status, message) = match self {
             AuthError::UnknownProvider => (StatusCode::BAD_REQUEST, "unknown_provider"),

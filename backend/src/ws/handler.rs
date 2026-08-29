@@ -7,17 +7,19 @@ use axum::{
 use crate::ws;
 use crate::{auth::AuthSession, state::AppState};
 
+#[tracing::instrument(skip_all, fields(room_id = %room_id, user_id = %session.user_id))]
 pub async fn ws_handler(
     AuthSession(session): AuthSession,
     ws: WebSocketUpgrade,
     Path(room_id): Path<String>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    println!("Request for {room_id} handler!");
+    tracing::info!("handling websocket upgrade request");
+
     let room = match state.rooms.connect(&room_id).await {
         Ok(r) => r,
         Err(e) => {
-            println!("{e:?}");
+            tracing::warn!(error = %e, "failed to connect to room");
             return StatusCode::NOT_FOUND.into_response();
         }
     };

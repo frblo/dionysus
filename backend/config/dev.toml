@@ -1,3 +1,11 @@
+# Local development overrides. Layered on top of the binary's default.toml.
+# Wired up by compose.yml, for a bare `cargo run`,
+# point DIONYSUS_CONFIG at this file.
+
+[logging]
+filter = "info,backend=debug,tower_http=debug"
+json = false
+
 [oidc]
 external_base_url = "http://localhost:8000"
 

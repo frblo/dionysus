@@ -11,6 +11,7 @@ use yrs_axum::{
 
 use crate::rooms::RoomManager;
 
+#[tracing::instrument(skip_all, fields(room_id = %room_id))]
 pub async fn peer(ws: WebSocket, rooms: RoomManager, bcast: Arc<BroadcastGroup>, room_id: String) {
     let (sink, stream) = ws.split();
     let sink = Arc::new(Mutex::new(AxumSink::from(sink)));
@@ -28,7 +29,7 @@ pub async fn peer(ws: WebSocket, rooms: RoomManager, bcast: Arc<BroadcastGroup>,
         match DefaultProtocol.start(&awareness, &mut encoder) {
             Ok(()) => Some(encoder.to_vec()),
             Err(e) => {
-                eprintln!("room={room_id} failed to build initial sync message: {e}");
+                tracing::warn!(error = %e, "failed to build initial sync message");
                 None
             }
         }
@@ -38,14 +39,14 @@ pub async fn peer(ws: WebSocket, rooms: RoomManager, bcast: Arc<BroadcastGroup>,
     {
         let mut s = sink.lock().await;
         if let Err(e) = s.send(payload).await {
-            eprintln!("room={room_id} failed to send initial sync message: {e}");
+            tracing::warn!(error = %e, "failed to send initial sync message");
         }
     }
 
     let sub = bcast.subscribe(sink, stream);
     match sub.completed().await {
-        Ok(()) => println!("room={room_id} finished successfully"),
-        Err(e) => eprintln!("room={room_id} finished abruptly: {e}"),
+        Ok(()) => tracing::info!("websocket connection closed"),
+        Err(e) => tracing::warn!(error = %e, "websocket connection closed abnormally"),
     }
 
     rooms.disconnect(&room_id).await;
