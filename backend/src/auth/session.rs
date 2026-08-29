@@ -33,18 +33,22 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_request_parts(parts, state)
             .await
-            .map_err(|_| (StatusCode::UNAUTHORIZED, "missing cookies"))?;
+            .map_err(|_| {
+                tracing::debug!("rejected request: missing cookies");
+                (StatusCode::UNAUTHORIZED, "missing cookies")
+            })?;
 
-        let cookie = jar
-            .get("session")
-            .ok_or((StatusCode::UNAUTHORIZED, "missing session"))?;
+        let cookie = jar.get("session").ok_or_else(|| {
+            tracing::debug!("rejected request: missing session cookie");
+            (StatusCode::UNAUTHORIZED, "missing session")
+        })?;
 
         let auth = AuthManager::from_ref(state);
 
-        let session = auth
-            .get_session(cookie.value())
-            .await
-            .ok_or((StatusCode::UNAUTHORIZED, "invalid session"))?;
+        let session = auth.get_session(cookie.value()).await.ok_or_else(|| {
+            tracing::debug!("rejected request: invalid or expired session");
+            (StatusCode::UNAUTHORIZED, "invalid session")
+        })?;
 
         Ok(AuthSession(session))
     }

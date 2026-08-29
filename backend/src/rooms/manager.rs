@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::{collections::HashMap, sync::Arc};
 
 use tokio::sync::{RwLock, mpsc, watch};
+use tracing::Instrument;
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, Subscription, Transact};
@@ -67,6 +68,7 @@ impl RoomManager {
 
     /// Aquire the [`LiveRoom`] for the `room_id` or attempt to cretate it
     /// if it doesn't already exist.
+    #[tracing::instrument(skip_all, fields(room_id = %room_id))]
     pub async fn connect(&self, room_id: &str) -> Result<Arc<LiveRoom>, Error> {
         // Check if it exists live
         let r = if let Some(r) = self.get_live(room_id).await {
@@ -81,6 +83,7 @@ impl RoomManager {
     }
 
     /// Release one connection. If it's the last we evict the room from memory
+    #[tracing::instrument(skip_all, fields(room_id = %room_id))]
     pub async fn disconnect(&self, room_id: &str) {
         let Some(room) = self.live.read().await.get(room_id).cloned() else {
             return;
@@ -97,7 +100,7 @@ impl RoomManager {
                 && Arc::ptr_eq(current, &room)
                 && current.conn_count.load(Ordering::Relaxed) == 0
             {
-                println!("Evicting room {room_id}");
+                tracing::info!("evicting room from memory (no active connections)");
                 guard.remove(room_id);
             }
         }
@@ -127,6 +130,7 @@ impl RoomManager {
 
     /// Creates a [`LiveRoom`] for the room, if it already exists return the existing
     /// [`LiveRoom`]
+    #[tracing::instrument(skip_all, fields(room_id = %room_id))]
     async fn create_room_live(&self, room_id: &str) -> Result<Arc<LiveRoom>, Error> {
         let mut guard = self.live.write().await;
         if let Some(r) = guard.get(room_id).cloned() {
@@ -174,48 +178,68 @@ impl RoomManager {
 
         let (persisted_tx, persisted_rx) = watch::channel(0u64);
 
-        tokio::spawn(async move {
-            let mut since_snapshot = 0;
-            let mut last_seq;
-            let mut processed: u64 = 0;
+        // The persistence task outlives the `create_room_live` span that spawns
+        // it, so give it its own root span rather than letting it inherit.
+        let persist_span = tracing::info_span!("room_persistence_task", room_id = %room_id_owned);
 
-            while let Some(update_bytes) = rx.recv().await {
-                match storage.append_update(&room_id_owned, &update_bytes).await {
-                    Ok(seq) => {
-                        last_seq = seq;
-                        since_snapshot += 1;
+        tokio::spawn(
+            async move {
+                let mut since_snapshot = 0;
+                let mut last_seq;
+                let mut processed: u64 = 0;
 
-                        if since_snapshot >= snapshot_every {
-                            // Encode full doc state as an update (v1) and store snapshot.
-                            let bytes = doc_for_snapshots
-                                .transact()
-                                .encode_state_as_update_v1(&yrs::StateVector::default());
+                while let Some(update_bytes) = rx.recv().await {
+                    match storage.append_update(&room_id_owned, &update_bytes).await {
+                        Ok(seq) => {
+                            last_seq = seq;
+                            since_snapshot += 1;
 
-                            let snap = storage::Snapshot {
-                                covered_through: last_seq,
-                                bytes,
-                            };
+                            if since_snapshot >= snapshot_every {
+                                // Encode full doc state as an update (v1) and store snapshot.
+                                let bytes = doc_for_snapshots
+                                    .transact()
+                                    .encode_state_as_update_v1(&yrs::StateVector::default());
 
-                            // Attempt to store snapshot. On error just log and continue.
-                            if let Err(e) = storage.store_snapshot(&room_id_owned, snap).await {
-                                eprintln!("snapshot failed room={room_id_owned}: {e:?}");
-                            } else {
-                                since_snapshot = 0;
+                                let snap = storage::Snapshot {
+                                    covered_through: last_seq,
+                                    bytes,
+                                };
+
+                                // Attempt to store snapshot. On error just log and continue.
+                                match storage.store_snapshot(&room_id_owned, snap).await {
+                                    Ok(()) => {
+                                        since_snapshot = 0;
+                                        tracing::debug!(
+                                            covered_through = last_seq,
+                                            "snapshot stored"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            error = %e,
+                                            "failed to store snapshot, will retry on next threshold"
+                                        );
+                                    }
+                                }
                             }
                         }
+                        Err(e) => {
+                            // Attempt to store change. On error just log and continue in-memory doc.
+                            tracing::error!(
+                                error = %e,
+                                "failed to persist update to storage; in-memory doc continues but change may be lost on restart"
+                            );
+                        }
                     }
-                    Err(e) => {
-                        // Attempt to store change. On error just log and continue in-memory doc.
-                        eprintln!("append_update failed room={room_id_owned}: {e:?}");
-                    }
-                }
 
-                // Mark as processed even on error: the error is already logged above and
-                // there's no retry, so this is what "drained" means for a room eviction wait.
-                processed += 1;
-                let _ = persisted_tx.send(processed);
+                    // Mark as processed even on error: the error is already logged above and
+                    // there's no retry, so this is what "drained" means for a room eviction wait.
+                    processed += 1;
+                    let _ = persisted_tx.send(processed);
+                }
             }
-        });
+            .instrument(persist_span),
+        );
 
         let enqueued = Arc::new(AtomicU64::new(0));
         let enqueued_for_sub = enqueued.clone();
@@ -226,7 +250,11 @@ impl RoomManager {
                     enqueued_for_sub.fetch_add(1, Ordering::Relaxed);
                 }
                 Err(e) => {
-                    eprintln!("room={room_id_for_sub} persist task is gone, update dropped: {e}");
+                    tracing::error!(
+                        room_id = %room_id_for_sub,
+                        error = %e,
+                        "persist task is gone, update dropped"
+                    );
                 }
             })
             .expect("Subscription function should work.");

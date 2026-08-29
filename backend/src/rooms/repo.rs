@@ -32,7 +32,13 @@ impl DatabaseStorage {
                 },
             )
             .await
-            .expect("Initialization calls should work");
+            .unwrap_or_else(|e| {
+                tracing::error!(
+                    error = %e,
+                    "failed to seed demo room during storage initialization"
+                );
+                panic!("Initialization calls should work");
+            });
 
         storage
     }

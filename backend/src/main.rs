@@ -39,6 +39,7 @@ async fn main() -> anyhow::Result<()> {
     let state = state::AppState::new(Db::new(pool), auth).await;
 
     let app = app::router(state);
+    tracing::info!("application initialized");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     tracing::info!(addr = %listener.local_addr().unwrap(), "listening for connections");

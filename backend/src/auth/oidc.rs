@@ -112,20 +112,41 @@ impl OidcRegistry {
         let mut providers = HashMap::new();
 
         for (id, p) in &cfg.providers {
-            let issuer =
-                IssuerUrl::new(p.issuer.clone()).map_err(|e| OidcError::InvalidIssuer {
-                    provider: id.clone(),
-                    source: e,
-                })?;
+            let provider = Self::register_provider(id, p).await?;
+            providers.insert(id.clone(), provider);
+        }
 
-            let meta = CoreProviderMetadata::discover_async(issuer, async_http_client)
-                .await
-                .map_err(|e| OidcError::Discovery {
-                    provider: id.clone(),
-                    source: Box::new(e),
-                })?;
+        tracing::info!(
+            count = providers.len(),
+            providers = ?providers.keys().collect::<Vec<_>>(),
+            "OIDC registry initialized"
+        );
 
-            let meta = if let Some(external) = &p.external_issuer {
+        Ok(Self { providers })
+    }
+
+    /// Discover and build the client for a single OIDC provider.
+    #[tracing::instrument(skip_all, fields(provider_id = %id))]
+    async fn register_provider(
+        id: &str,
+        p: &config::OidcProvider,
+    ) -> Result<Arc<OidcProvider>, OidcError> {
+        tracing::info!(issuer = %p.issuer, "starting OIDC discovery");
+
+        let issuer = IssuerUrl::new(p.issuer.clone()).map_err(|e| OidcError::InvalidIssuer {
+            provider: id.to_string(),
+            source: e,
+        })?;
+
+        let meta = CoreProviderMetadata::discover_async(issuer, async_http_client)
+            .await
+            .map_err(|e| OidcError::Discovery {
+                provider: id.to_string(),
+                source: Box::new(e),
+            })?;
+
+        let meta =
+            if let Some(external) = &p.external_issuer {
                 let internal = p.issuer.trim_end_matches('/');
                 let external_str = external.trim_end_matches('/');
 
@@ -133,7 +154,7 @@ impl OidcRegistry {
 
                 let auth_url = AuthUrl::new(patch(meta.authorization_endpoint().as_str()))
                     .map_err(|e| OidcError::InvalidIssuer {
-                        provider: id.clone(),
+                        provider: id.to_string(),
                         source: e,
                     })?;
 
@@ -142,24 +163,22 @@ impl OidcRegistry {
                 meta
             };
 
-            let client = CoreClient::from_provider_metadata(
-                meta,
-                ClientId::new(p.client_id.clone()),
-                Some(ClientSecret::new(p.client_secret.clone())),
-            );
+        let client = CoreClient::from_provider_metadata(
+            meta,
+            ClientId::new(p.client_id.clone()),
+            Some(ClientSecret::new(p.client_secret.clone())),
+        );
 
-            if p.scopes.is_empty() {
-                return Err(OidcError::NoScopes {
-                    provider: id.clone(),
-                });
-            }
-
-            let scopes = p.scopes.iter().cloned().map(Scope::new).collect();
-
-            providers.insert(id.clone(), Arc::new(OidcProvider { client, scopes }));
+        if p.scopes.is_empty() {
+            return Err(OidcError::NoScopes {
+                provider: id.to_string(),
+            });
         }
 
-        Ok(Self { providers })
+        let scopes = p.scopes.iter().cloned().map(Scope::new).collect();
+        tracing::info!(scope_count = p.scopes.len(), "OIDC provider registered");
+
+        Ok(Arc::new(OidcProvider { client, scopes }))
     }
 
     pub fn get(&self, id: &str) -> Result<Arc<OidcProvider>, OidcError> {
