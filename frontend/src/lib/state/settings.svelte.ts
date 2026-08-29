@@ -20,13 +20,3 @@ export const editorViewSettings = $state({
   panelFocus: PanelFocus.Both,
 });
 
-export enum GallaryModals {
-  Delete,
-  Rename,
-  Create,
-  None,
-}
-
-export const gallaryModalSettings = $state({
-  modalOpen: GallaryModals.None,
-});

@@ -6,60 +6,20 @@
     FileEarmarkTextFill,
     Trash,
   } from "svelte-bootstrap-icons";
-  import type { PageProps } from "./$types";
-  import {
-    GallaryModals,
-    gallaryModalSettings,
-  } from "$lib/state/settings.svelte";
-  import { createRoom, deleteRoom } from "$lib/gallary/api";
+  import { GallaryModals } from "$lib/state/gallary.svelte";
   import type { RoomInfo } from "./+page";
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
-
-  let { data }: PageProps = $props();
-
-  let createName = $state("");
-  let deleteTargetId = $state("");
-  let deleteConfirmInput = $state("");
-  let hoveredRoomId = $state<string | null>(null);
+  import CreateModal from "$lib/gallary/CreateModal.svelte";
+  import RemoveModal from "$lib/gallary/RemoveModal.svelte";
+  import { gallaryState } from "$lib/state/gallary.svelte";
 
   function openCreateModal() {
-    createName = "";
-    toggleModal(GallaryModals.Create);
+    gallaryState.modalOpen = GallaryModals.Create;
   }
 
-  function closeCreateModal() {
-    toggleModal(GallaryModals.None);
-  }
-
-  async function handleCreate() {
-    if (!createName.trim()) return;
-    const createdRoomId = await createRoom(createName);
-    closeCreateModal();
-    goto(`/document/${createdRoomId}`);
-  }
-
-  function openDeleteModal(id: string) {
-    deleteTargetId = id;
-    deleteConfirmInput = "";
-    toggleModal(GallaryModals.Delete);
-  }
-
-  function closeDeleteModal() {
-    toggleModal(GallaryModals.None);
-    deleteTargetId = "";
-    deleteConfirmInput = "";
-  }
-
-  async function handleDelete() {
-    // TODO: update page
-    if (deleteConfirmInput !== deleteTargetId) return;
-    await deleteRoom(deleteTargetId);
-    closeDeleteModal();
-  }
-
-  function toggleModal(modal: GallaryModals) {
-    gallaryModalSettings.modalOpen = modal;
+  function openDeleteModal() {
+    gallaryState.targetedId = gallaryState.hoveredRoomId?.toString() || "";
+    gallaryState.modalOpen = GallaryModals.Remove;
   }
 
   function stringToColor(str: string): string {
@@ -80,24 +40,25 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  let roomList = $state(data.roomList);
-
   onMount(() => {
     const eventSource = new EventSource("/rooms/api/sse");
 
     eventSource.addEventListener("room-added", (event) => {
       const room = JSON.parse(event.data);
       const roomInfo: RoomInfo = { id: room.room_id, name: room.room_name };
-      roomList.set(roomInfo.id, roomInfo);
+      gallaryState.roomList.set(roomInfo.id, roomInfo);
     });
 
     eventSource.addEventListener("room-updated", (event) => {
       const room = JSON.parse(event.data);
-      roomList.set(room.room_id, { id: room.room_id, name: room.room_name });
+      gallaryState.roomList.set(room.room_id, {
+        id: room.room_id,
+        name: room.room_name,
+      });
     });
 
     eventSource.addEventListener("room-removed", (event) => {
-      roomList.delete(event.data);
+      gallaryState.roomList.delete(event.data);
     });
 
     return () => {
@@ -123,12 +84,12 @@
     <div
       class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] auto-rows-min gap-4 content-start w-full"
     >
-      {#each roomList as [_, room]}
+      {#each gallaryState.roomList as [_, room]}
         <a
           href="/document/{room.id}"
           class="relative group block h-40 rounded-lg border border-gray-700 bg-[#252526] p-4 hover:border-gray-500 hover:bg-[#2d2d2d] transition-colors no-underline"
-          onmouseenter={() => (hoveredRoomId = room.id)}
-          onmouseleave={() => (hoveredRoomId = null)}
+          onmouseenter={() => (gallaryState.hoveredRoomId = room.id)}
+          onmouseleave={() => (gallaryState.hoveredRoomId = null)}
         >
           <div class="flex h-full flex-col items-center">
             <div class="flex flex-1 items-center justify-center">
@@ -147,14 +108,14 @@
             </span>
           </div>
 
-          {#if hoveredRoomId === room.id}
+          {#if gallaryState.hoveredRoomId === room.id}
             <button
               class="absolute top-2 right-2 p-1.5 rounded bg-red-600/80 hover:bg-red-500 text-white text-xs transition-colors z-10"
               title="Delete screenplay"
               onclick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openDeleteModal(room.id);
+                openDeleteModal();
               }}
               onmouseenter={(e) => e.stopPropagation()}
             >
@@ -167,89 +128,5 @@
   </main>
 </div>
 
-{#if gallaryModalSettings.modalOpen == GallaryModals.Create}
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <div
-      class="absolute inset-0 bg-black/50"
-      role="presentation"
-      onclick={closeCreateModal}
-    ></div>
-    <div
-      class="relative bg-[#252526] border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-sm z-10"
-    >
-      <h2 class="text-sm font-medium text-gray-200 mb-4">New Screenplay</h2>
-      <input
-        type="text"
-        placeholder="Enter screenplay name"
-        bind:value={createName}
-        class="w-full px-3 py-2 rounded border border-gray-600 bg-[#1e1e1e] text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:border-gray-400 mb-4"
-        onkeydown={(e) => e.key === "Enter" && handleCreate()}
-      />
-      <div class="flex justify-end gap-2">
-        <button
-          class="px-3 py-1.5 rounded border border-gray-600 text-gray-400 text-xs hover:bg-[#3c3c3c] transition"
-          onclick={closeCreateModal}
-        >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-1.5 rounded bg-[#3c3c3c] text-gray-200 text-xs hover:bg-[#4a4a4a] transition border border-gray-600"
-          onclick={handleCreate}
-        >
-          Create
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-{#if gallaryModalSettings.modalOpen == GallaryModals.Delete}
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <div
-      class="absolute inset-0 bg-black/50"
-      role="presentation"
-      onclick={closeDeleteModal}
-    ></div>
-    <div
-      class="relative bg-[#252526] border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-sm z-10"
-    >
-      <h2 class="text-sm font-medium text-red-400 mb-2">Delete Screenplay</h2>
-      <p class="text-xs text-gray-400 mb-4">
-        Type
-        <br />
-        <span class="font-mono text-gray-300">{deleteTargetId}</span>
-        <br />
-        to confirm deletion.
-      </p>
-      <input
-        type="text"
-        placeholder="Type document ID to confirm"
-        bind:value={deleteConfirmInput}
-        class="w-full px-3 py-2 rounded border border-gray-600 bg-[#1e1e1e] text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:border-red-500 mb-4"
-        onkeydown={(e) => e.key === "Enter" && handleDelete()}
-      />
-      <div class="flex justify-end gap-2">
-        <button
-          class="px-3 py-1.5 rounded border border-gray-600 text-gray-400 text-xs hover:bg-[#3c3c3c] transition"
-          onclick={closeDeleteModal}
-        >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-1.5 rounded text-xs transition border"
-          class:bg-red-700={deleteConfirmInput === deleteTargetId}
-          class:text-white={deleteConfirmInput === deleteTargetId}
-          class:border-red-600={deleteConfirmInput === deleteTargetId}
-          class:hover:bg-red-600={deleteConfirmInput === deleteTargetId}
-          class:bg-[#3c3c3c]={deleteConfirmInput !== deleteTargetId}
-          class:text-gray-500={deleteConfirmInput !== deleteTargetId}
-          class:border-gray-600={deleteConfirmInput !== deleteTargetId}
-          disabled={deleteConfirmInput !== deleteTargetId}
-          onclick={handleDelete}
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
+<CreateModal />
+<RemoveModal />

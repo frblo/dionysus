@@ -1,5 +1,6 @@
 import { SvelteMap } from 'svelte/reactivity';
 import type { PageLoad } from './$types';
+import { gallaryState } from '$lib/state/gallary.svelte';
 
 export interface RoomInfo {
   id: string,
@@ -12,12 +13,6 @@ export const load: PageLoad = async ({ fetch }) => {
     credentials: "include"
   });
   const json = await response.json();
-  // const bogus = [
-  //   {
-  //     room_id: "id_lolboll",
-  //     room_name: "Bunguskons seger",
-  //   }
-  // ]
 
   let data = new SvelteMap<string, RoomInfo>();
   for (const room of json) {
@@ -28,7 +23,5 @@ export const load: PageLoad = async ({ fetch }) => {
     data.set(roomInfo.id, roomInfo);
   }
 
-  return {
-    roomList: data
-  };
+  gallaryState.roomList = data;
 };
