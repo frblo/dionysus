@@ -13,7 +13,8 @@ async-trait = "0.1.89"
 # web
 axum = "0.8"
 axum-extra = { version = "0.12.5", features = [ "cookie" ] }
-tower-http = { version = "0.6.8", features = [ "fs", "trace" ]}
+tower = "0.5"
+tower-http = { version = "0.6.8", features = [ "fs", "trace", "request-id", "util" ]}
 openidconnect = { version = "3", default-features = false, features = ["reqwest", "rustls-tls"] }
 
 # database

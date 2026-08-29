@@ -11,8 +11,22 @@ use yrs_axum::{
 
 use crate::rooms::RoomManager;
 
-#[tracing::instrument(skip_all, fields(room_id = %room_id))]
-pub async fn peer(ws: WebSocket, rooms: RoomManager, bcast: Arc<BroadcastGroup>, room_id: String) {
+/// Drives a single client's websocket connection to `room_id` for its whole
+/// lifetime. Sends the server's initial sync message, hands the socket to the
+/// room's [`BroadcastGroup`] to run the Yjs sync protocol until the connection
+/// ends, then releases it via [`RoomManager::disconnect`].
+///
+/// `request_id` is passed in from `ws_handler` rather than read from a span:
+/// this runs in a task detached from the request by `on_upgrade`, so it can't
+/// inherit the `http_request` span the way the rest of the handler does.
+#[tracing::instrument(skip_all, fields(room_id = %room_id, request_id = %request_id))]
+pub async fn peer(
+    ws: WebSocket,
+    rooms: RoomManager,
+    bcast: Arc<BroadcastGroup>,
+    room_id: String,
+    request_id: String,
+) {
     let (sink, stream) = ws.split();
     let sink = Arc::new(Mutex::new(AxumSink::from(sink)));
     let stream = AxumStream::from(stream);
