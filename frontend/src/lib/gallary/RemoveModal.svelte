@@ -22,7 +22,7 @@
 </script>
 
 {#if gallaryState.modalOpen == GallaryModals.Remove}
-  <Modal title="Remove script" closeModal={closeDeleteModal}>
+  <Modal title="Remove screenplay" closeModal={closeDeleteModal}>
     <p class="text-xs text-gray-400 mb-4">
       Type
       <br />

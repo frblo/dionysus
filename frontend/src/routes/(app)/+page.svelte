@@ -4,6 +4,7 @@
   import {
     FileEarmarkPlus,
     FileEarmarkTextFill,
+    PencilSquare,
     Trash,
   } from "svelte-bootstrap-icons";
   import { GallaryModals } from "$lib/state/gallary.svelte";
@@ -11,10 +12,16 @@
   import { onMount } from "svelte";
   import CreateModal from "$lib/gallary/CreateModal.svelte";
   import RemoveModal from "$lib/gallary/RemoveModal.svelte";
+  import RenameModal from "$lib/gallary/RenameModal.svelte";
   import { gallaryState } from "$lib/state/gallary.svelte";
 
   function openCreateModal() {
     gallaryState.modalOpen = GallaryModals.Create;
+  }
+
+  function openRenameModal() {
+    gallaryState.targetedId = gallaryState.hoveredRoomId?.toString() || "";
+    gallaryState.modalOpen = GallaryModals.Rename;
   }
 
   function openDeleteModal() {
@@ -110,6 +117,18 @@
 
           {#if gallaryState.hoveredRoomId === room.id}
             <button
+              class="absolute top-2 left-2 p-1.5 rounded bg-blue-600/80 hover:bg-blue-500 text-white text-xs transition-colors z-10"
+              title="Rename screenplay"
+              onclick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openRenameModal();
+              }}
+              onmouseenter={(e) => e.stopPropagation()}
+            >
+              <PencilSquare />
+            </button>
+            <button
               class="absolute top-2 right-2 p-1.5 rounded bg-red-600/80 hover:bg-red-500 text-white text-xs transition-colors z-10"
               title="Delete screenplay"
               onclick={(e) => {
@@ -130,3 +149,4 @@
 
 <CreateModal />
 <RemoveModal />
+<RenameModal />

@@ -195,7 +195,7 @@ impl RoomManager {
 
         // The persistence task outlives the `create_room_live` span that spawns
         // it, so give it its own root span rather than letting it inherit.
-        let persist_span = tracing::info_span!("room_persistence_task", room_id = %room_id_owned);
+        let persist_span = tracing::info_span!("room_persistence_task", room_id = %room_id);
 
         tokio::spawn(
             async move {
