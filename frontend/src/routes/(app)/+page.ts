@@ -8,7 +8,7 @@ export interface RoomInfo {
 }
 
 export const load: PageLoad = async ({ fetch }) => {
-  const response = await fetch("/rooms/api/list", {
+  const response = await fetch("/api/rooms/list", {
     method: "GET",
     credentials: "include"
   });

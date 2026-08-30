@@ -1,5 +1,5 @@
 export async function createRoom(name: String): Promise<String> {
-  const response = await fetch(`/rooms/api/create/${name}`, {
+  const response = await fetch(`/api/rooms/create/${name}`, {
     method: "POST",
     credentials: "include"
   });
@@ -8,14 +8,14 @@ export async function createRoom(name: String): Promise<String> {
 }
 
 export async function renameRoom(id: String, name: String) {
-  await fetch(`/rooms/api/rename/${id}/${name}`, {
+  await fetch(`/api/rooms/rename/${id}/${name}`, {
     method: "POST",
     credentials: "include"
   });
 }
 
 export async function deleteRoom(id: String) {
-  await fetch(`/rooms/api/delete/${id}`, {
+  await fetch(`/api/rooms/delete/${id}`, {
     method: "POST",
     credentials: "include"
   });

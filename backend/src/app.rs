@@ -16,7 +16,7 @@ pub fn router(state: AppState) -> Router {
 
     let app = Router::new()
         .nest("/auth", auth::router())
-        .nest("/rooms/api", rooms::router())
+        .nest("/api/rooms", rooms::router())
         .route("/rooms/ws/{room_id}", get(ws::handler::ws_handler))
         .fallback_service(serve_dir)
         .with_state(state);

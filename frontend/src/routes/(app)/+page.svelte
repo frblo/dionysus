@@ -48,7 +48,7 @@
   }
 
   onMount(() => {
-    const eventSource = new EventSource("/rooms/api/sse");
+    const eventSource = new EventSource("/api/rooms/sse");
 
     eventSource.addEventListener("room-added", (event) => {
       const room = JSON.parse(event.data);
