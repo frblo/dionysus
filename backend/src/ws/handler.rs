@@ -1,8 +1,9 @@
 use axum::{
-    extract::{Path, State, ws::WebSocketUpgrade},
+    extract::{Extension, Path, State, ws::WebSocketUpgrade},
     http::StatusCode,
     response::IntoResponse,
 };
+use tower_http::request_id::RequestId;
 
 use crate::ws;
 use crate::{auth::AuthSession, state::AppState};
@@ -13,7 +14,14 @@ pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(room_id): Path<String>,
     State(state): State<AppState>,
+    Extension(request_id): Extension<RequestId>,
 ) -> impl IntoResponse {
+    let request_id = request_id
+        .header_value()
+        .to_str()
+        .unwrap_or("invalid")
+        .to_owned();
+
     tracing::info!("handling websocket upgrade request");
 
     let room = match state.rooms.connect(&room_id).await {
@@ -27,5 +35,5 @@ pub async fn ws_handler(
     let rooms = state.rooms.clone();
     let bcast = room.bcast.clone();
 
-    ws.on_upgrade(move |socket| ws::peer::peer(socket, rooms, bcast, room_id))
+    ws.on_upgrade(move |socket| ws::peer::peer(socket, rooms, bcast, room_id, request_id))
 }
