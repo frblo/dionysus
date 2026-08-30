@@ -1,33 +1,33 @@
 <script>
   import Modal from "$lib/common/Modal.svelte";
-  import { deleteRoom } from "$lib/gallary/api";
-  import { GallaryModals, gallaryState } from "$lib/state/gallary.svelte";
+  import { deleteRoom } from "$lib/gallery/api";
+  import { GalleryModals, galleryState } from "$lib/state/gallery.svelte";
 
   let deleteConfirmInput = $state("");
 
   function closeDeleteModal() {
     deleteConfirmInput = "";
-    gallaryState.modalOpen = GallaryModals.None;
+    galleryState.modalOpen = GalleryModals.None;
   }
 
   async function handleDelete() {
     if (
       deleteConfirmInput !==
-      gallaryState.roomList.get(gallaryState.targetedId)?.name
+      galleryState.roomList.get(galleryState.targetedId)?.name
     )
       return;
-    await deleteRoom(gallaryState.targetedId);
+    await deleteRoom(galleryState.targetedId);
     closeDeleteModal();
   }
 </script>
 
-{#if gallaryState.modalOpen == GallaryModals.Remove}
+{#if galleryState.modalOpen == GalleryModals.Remove}
   <Modal title="Remove screenplay" closeModal={closeDeleteModal}>
     <p class="text-xs text-gray-400 mb-4">
       Type
       <br />
       <span class="font-mono text-gray-300"
-        >{gallaryState.roomList.get(gallaryState.targetedId)?.name}</span
+        >{galleryState.roomList.get(galleryState.targetedId)?.name}</span
       >
       <br />
       to confirm deletion.
@@ -49,21 +49,21 @@
       <button
         class="px-3 py-1.5 rounded text-xs transition border"
         class:bg-red-700={deleteConfirmInput ===
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:text-white={deleteConfirmInput ===
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:border-red-600={deleteConfirmInput ===
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:hover:bg-red-600={deleteConfirmInput ===
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:bg-[#3c3c3c]={deleteConfirmInput !==
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:text-gray-500={deleteConfirmInput !==
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         class:border-gray-600={deleteConfirmInput !==
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         disabled={deleteConfirmInput !==
-          gallaryState.roomList.get(gallaryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.name}
         onclick={handleDelete}
       >
         Delete

@@ -7,26 +7,26 @@
     PencilSquare,
     Trash,
   } from "svelte-bootstrap-icons";
-  import { GallaryModals } from "$lib/state/gallary.svelte";
+  import { GalleryModals } from "$lib/state/gallery.svelte";
   import type { RoomInfo } from "./+page";
   import { onMount } from "svelte";
-  import CreateModal from "$lib/gallary/CreateModal.svelte";
-  import RemoveModal from "$lib/gallary/RemoveModal.svelte";
-  import RenameModal from "$lib/gallary/RenameModal.svelte";
-  import { gallaryState } from "$lib/state/gallary.svelte";
+  import CreateModal from "$lib/gallery/CreateModal.svelte";
+  import RemoveModal from "$lib/gallery/RemoveModal.svelte";
+  import RenameModal from "$lib/gallery/RenameModal.svelte";
+  import { galleryState } from "$lib/state/gallery.svelte";
 
   function openCreateModal() {
-    gallaryState.modalOpen = GallaryModals.Create;
+    galleryState.modalOpen = GalleryModals.Create;
   }
 
   function openRenameModal() {
-    gallaryState.targetedId = gallaryState.hoveredRoomId?.toString() || "";
-    gallaryState.modalOpen = GallaryModals.Rename;
+    galleryState.targetedId = galleryState.hoveredRoomId?.toString() || "";
+    galleryState.modalOpen = GalleryModals.Rename;
   }
 
   function openDeleteModal() {
-    gallaryState.targetedId = gallaryState.hoveredRoomId?.toString() || "";
-    gallaryState.modalOpen = GallaryModals.Remove;
+    galleryState.targetedId = galleryState.hoveredRoomId?.toString() || "";
+    galleryState.modalOpen = GalleryModals.Remove;
   }
 
   function stringToColor(str: string): string {
@@ -53,19 +53,19 @@
     eventSource.addEventListener("room-added", (event) => {
       const room = JSON.parse(event.data);
       const roomInfo: RoomInfo = { id: room.room_id, name: room.room_name };
-      gallaryState.roomList.set(roomInfo.id, roomInfo);
+      galleryState.roomList.set(roomInfo.id, roomInfo);
     });
 
     eventSource.addEventListener("room-updated", (event) => {
       const room = JSON.parse(event.data);
-      gallaryState.roomList.set(room.room_id, {
+      galleryState.roomList.set(room.room_id, {
         id: room.room_id,
         name: room.room_name,
       });
     });
 
     eventSource.addEventListener("room-removed", (event) => {
-      gallaryState.roomList.delete(event.data);
+      galleryState.roomList.delete(event.data);
     });
 
     return () => {
@@ -91,12 +91,12 @@
     <div
       class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] auto-rows-min gap-4 content-start w-full"
     >
-      {#each gallaryState.roomList as [_, room]}
+      {#each galleryState.roomList as [_, room]}
         <a
           href="/document/{room.id}"
           class="relative group block h-40 rounded-lg border border-gray-700 bg-[#252526] p-4 hover:border-gray-500 hover:bg-[#2d2d2d] transition-colors no-underline"
-          onmouseenter={() => (gallaryState.hoveredRoomId = room.id)}
-          onmouseleave={() => (gallaryState.hoveredRoomId = null)}
+          onmouseenter={() => (galleryState.hoveredRoomId = room.id)}
+          onmouseleave={() => (galleryState.hoveredRoomId = null)}
         >
           <div class="flex h-full flex-col items-center">
             <div class="flex flex-1 items-center justify-center">
@@ -115,7 +115,7 @@
             </span>
           </div>
 
-          {#if gallaryState.hoveredRoomId === room.id}
+          {#if galleryState.hoveredRoomId === room.id}
             <button
               class="absolute top-2 left-2 p-1.5 rounded bg-blue-600/80 hover:bg-blue-500 text-white text-xs transition-colors z-10"
               title="Rename screenplay"

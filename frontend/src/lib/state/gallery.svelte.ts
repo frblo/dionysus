@@ -1,18 +1,18 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { RoomInfo } from "../../routes/(app)/+page";
 
-export enum GallaryModals {
+export enum GalleryModals {
   Remove,
   Rename,
   Create,
   None,
 }
 
-class GallaryState {
+class GalleryState {
   hoveredRoomId = $state<string | null>(null);
-  modalOpen = $state(GallaryModals.None);
+  modalOpen = $state(GalleryModals.None);
   targetedId = $state("");
   roomList = $state<SvelteMap<string, RoomInfo>>(new SvelteMap);
 }
 
-export const gallaryState = new GallaryState();
+export const galleryState = new GalleryState();

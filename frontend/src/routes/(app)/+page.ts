@@ -1,6 +1,6 @@
 import { SvelteMap } from 'svelte/reactivity';
 import type { PageLoad } from './$types';
-import { gallaryState } from '$lib/state/gallary.svelte';
+import { galleryState } from '$lib/state/gallery.svelte';
 
 export interface RoomInfo {
   id: string,
@@ -23,5 +23,5 @@ export const load: PageLoad = async ({ fetch }) => {
     data.set(roomInfo.id, roomInfo);
   }
 
-  gallaryState.roomList = data;
+  galleryState.roomList = data;
 };

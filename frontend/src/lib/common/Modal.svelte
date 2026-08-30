@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { GallaryModals, gallaryState } from "$lib/state/gallary.svelte";
+  import { GalleryModals, galleryState } from "$lib/state/gallery.svelte";
   import type { Snippet } from "svelte";
 
   function defaultCloseModal() {
-    gallaryState.modalOpen = GallaryModals.None;
+    galleryState.modalOpen = GalleryModals.None;
   }
 
   let {

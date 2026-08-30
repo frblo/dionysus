@@ -1,8 +1,8 @@
 <script>
   import Modal from "$lib/common/Modal.svelte";
-  import { createRoom } from "$lib/gallary/api";
+  import { createRoom } from "$lib/gallery/api";
   import { goto } from "$app/navigation";
-  import { GallaryModals, gallaryState } from "$lib/state/gallary.svelte";
+  import { GalleryModals, galleryState } from "$lib/state/gallery.svelte";
 
   let createName = $state("");
 
@@ -15,11 +15,11 @@
 
   function closeCreateModal() {
     createName = "";
-    gallaryState.modalOpen = GallaryModals.None;
+    galleryState.modalOpen = GalleryModals.None;
   }
 </script>
 
-{#if gallaryState.modalOpen == GallaryModals.Create}
+{#if galleryState.modalOpen == GalleryModals.Create}
   <Modal title="Create" closeModal={closeCreateModal}>
     <input
       type="text"
