@@ -3,7 +3,7 @@ export async function createRoom(name: String): Promise<String> {
     method: "POST",
     credentials: "include"
   });
-  const roomId: String = await response.json();
+  const roomId: string = await response.json();
   return roomId;
 }
 

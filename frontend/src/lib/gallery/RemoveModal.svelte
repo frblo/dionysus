@@ -34,7 +34,7 @@
     </p>
     <input
       type="text"
-      placeholder="Type document ID to confirm"
+      placeholder="Type document name to confirm"
       bind:value={deleteConfirmInput}
       class="w-full px-3 py-2 rounded border border-gray-600 bg-[#1e1e1e] text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:border-red-500 mb-4"
       onkeydown={(e) => e.key === "Enter" && handleDelete()}
