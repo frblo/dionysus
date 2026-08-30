@@ -84,8 +84,7 @@ async fn room_info(
 async fn rename(
     AuthSession(_session): AuthSession,
     State(state): State<AppState>,
-    Path(room_id): Path<Uuid>,
-    Path(room_name): Path<String>,
+    Path((room_id, room_name)): Path<(Uuid, String)>,
 ) -> Result<(), rooms::Error> {
     let info = state.rooms.rename_room(room_id, &room_name).await?;
     let _ = state.gallary_tx.send(RoomDelta::Updated(info));
