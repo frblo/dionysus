@@ -71,10 +71,10 @@
 </script>
 
 <svelte:head>
-  <title>Dionysus - {roomId}</title>
+  <title>Dionysus - {page.data.roomInfo?.room_name}</title>
 </svelte:head>
 
-<Header title={roomId}>
+<Header title={page.data.roomInfo?.room_name}>
   <button
     class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
     onclick={() =>
