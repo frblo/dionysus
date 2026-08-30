@@ -28,25 +28,6 @@ impl InMemoryStorage {
             rooms: RwLock::new(HashMap::new()),
         };
 
-        // storage
-        //     .create_room(
-        //         "demo-room-1",
-        //         CreateRoomOptions {
-        //             ..Default::default()
-        //         },
-        //     )
-        //     .await
-        //     .expect("Initialization calls should work");
-        // let _ = storage
-        //     .append_update(
-        //         "demo-room-1",
-        //         &demo_doc()
-        //             .transact()
-        //             .encode_state_as_update_v1(&yrs::StateVector::default()),
-        //     )
-        //     .await
-        //     .expect("Initialization calls should work");
-
         storage
     }
 }

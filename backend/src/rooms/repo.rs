@@ -25,21 +25,6 @@ pub struct DatabaseStorage {
 impl DatabaseStorage {
     pub async fn new(db: Db) -> Self {
         let storage = Self { db };
-        storage
-            .create_room(
-                "demo-room-1",
-                CreateRoomOptions {
-                    ..Default::default()
-                },
-            )
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!(
-                    error = %e,
-                    "failed to seed demo room during storage initialization"
-                );
-                panic!("Initialization calls should work");
-            });
 
         storage
     }
