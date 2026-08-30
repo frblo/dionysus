@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::{collections::HashMap, sync::Arc};
 
+use tokio::sync::broadcast;
 use tokio::sync::{RwLock, mpsc, watch};
 use tracing::Instrument;
 use uuid::Uuid;
@@ -10,6 +11,7 @@ use yrs::{Doc, ReadTxn, Subscription, Transact};
 use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
+use crate::rooms::routes::RoomDelta;
 use crate::rooms::storage::{self, LoadUpdatesOptions, RoomInfo, Storage};
 
 pub struct LiveRoom {
@@ -51,6 +53,7 @@ pub struct RoomManager {
     live: Arc<RwLock<HashMap<Uuid, Arc<LiveRoom>>>>,
     bcast_capacity: usize,
     snapshot_every_n_updates: u64,
+    pub gallery_tx: broadcast::Sender<RoomDelta>,
 }
 
 impl RoomManager {
@@ -59,11 +62,13 @@ impl RoomManager {
         bcast_capacity: usize,
         snapshot_every_n_updates: u64,
     ) -> Self {
+        let (tx, _) = broadcast::channel::<RoomDelta>(32);
         Self {
             storage,
             live: Arc::new(RwLock::new(HashMap::new())),
             bcast_capacity,
             snapshot_every_n_updates,
+            gallery_tx: tx,
         }
     }
 

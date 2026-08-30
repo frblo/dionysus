@@ -3,9 +3,14 @@
   import { renameRoom } from "$lib/gallery/api";
   import { GalleryModals, galleryState } from "$lib/state/gallery.svelte";
 
-  let renameName = $state(
-    galleryState.roomList.get(galleryState.targetedId)?.name ?? "",
-  );
+  let renameName = $state("");
+
+  $effect(() => {
+    if (galleryState.modalOpen === GalleryModals.Rename) {
+      renameName =
+        galleryState.roomList.get(galleryState.targetedId)?.name ?? "";
+    }
+  });
 
   async function handleRename() {
     if (!renameName.trim()) return;

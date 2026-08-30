@@ -7,13 +7,12 @@
     PencilSquare,
     Trash,
   } from "svelte-bootstrap-icons";
-  import { GalleryModals } from "$lib/state/gallery.svelte";
-  import type { RoomInfo } from "./+page";
+  import { GalleryModals, type RoomInfo } from "$lib/state/gallery.svelte";
   import { onMount } from "svelte";
   import CreateModal from "$lib/gallery/CreateModal.svelte";
   import RemoveModal from "$lib/gallery/RemoveModal.svelte";
   import RenameModal from "$lib/gallery/RenameModal.svelte";
-  import { galleryState } from "$lib/state/gallery.svelte";
+  import { galleryState, loadRoomList } from "$lib/state/gallery.svelte";
 
   function openCreateModal() {
     galleryState.modalOpen = GalleryModals.Create;
@@ -66,6 +65,10 @@
 
     eventSource.addEventListener("room-removed", (event) => {
       galleryState.roomList.delete(event.data);
+    });
+
+    eventSource.addEventListener("resync", async () => {
+      await loadRoomList();
     });
 
     return () => {

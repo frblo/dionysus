@@ -8,10 +8,13 @@ use axum::{
         IntoResponse, Sse,
         sse::{Event, KeepAlive},
     },
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use futures_util::Stream;
-use tokio_stream::{StreamExt, wrappers::BroadcastStream};
+use tokio_stream::{
+    StreamExt,
+    wrappers::{BroadcastStream, errors::BroadcastStreamRecvError},
+};
 use uuid::Uuid;
 
 use crate::{
@@ -24,9 +27,9 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/list", get(list_rooms))
         .route("/room_info/{room_id}", get(room_info))
-        .route("/rename/{room_id}/{room_name}", post(rename))
+        .route("/rename/{room_id}", post(rename))
         .route("/create/{room_name}", post(create))
-        .route("/delete/{room_id}", post(delete))
+        .route("/delete/{room_id}", delete(remove))
         .route("/sse", get(sse_handler))
 }
 
@@ -35,15 +38,26 @@ pub enum RoomDelta {
     Added(RoomInfo),
     Updated(RoomInfo),
     Removed(Uuid),
+    Resync,
 }
 
 async fn sse_handler(
+    AuthSession(_session): AuthSession,
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let rx_stream = BroadcastStream::new(state.gallary_tx.subscribe());
+    let rx_stream = BroadcastStream::new(state.rooms.gallery_tx.subscribe());
 
     let stream = rx_stream.filter_map(|res| {
-        let delta = res.ok()?;
+        let delta = match res {
+            Ok(rd) => rd,
+            Err(BroadcastStreamRecvError::Lagged(n)) => {
+                tracing::warn!(
+                    missed_messages = n,
+                    "SSE recv lagged; requesting room list resync"
+                );
+                RoomDelta::Resync
+            }
+        };
 
         let event = match delta {
             RoomDelta::Added(room_info) => Event::default()
@@ -55,6 +69,7 @@ async fn sse_handler(
             RoomDelta::Removed(room_id) => Event::default()
                 .event("room-removed")
                 .data(room_id.to_string()),
+            RoomDelta::Resync => Event::default().event("resync"),
         };
 
         Some(Ok(event))
@@ -81,13 +96,19 @@ async fn room_info(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct RenameRoom {
+    name: String,
+}
+
 async fn rename(
     AuthSession(_session): AuthSession,
     State(state): State<AppState>,
-    Path((room_id, room_name)): Path<(Uuid, String)>,
+    Path(room_id): Path<Uuid>,
+    Json(payload): Json<RenameRoom>,
 ) -> Result<(), rooms::Error> {
-    let info = state.rooms.rename_room(room_id, &room_name).await?;
-    let _ = state.gallary_tx.send(RoomDelta::Updated(info));
+    let info = state.rooms.rename_room(room_id, &payload.name).await?;
+    let _ = state.rooms.gallery_tx.send(RoomDelta::Updated(info));
     Ok(())
 }
 
@@ -97,17 +118,17 @@ async fn create(
     Path(room_name): Path<String>,
 ) -> Result<Json<Uuid>, rooms::Error> {
     let info = state.rooms.create_room(&room_name).await?;
-    let _ = state.gallary_tx.send(RoomDelta::Added(info.clone()));
+    let _ = state.rooms.gallery_tx.send(RoomDelta::Added(info.clone()));
     Ok(Json(info.room_id))
 }
 
-async fn delete(
+async fn remove(
     AuthSession(_session): AuthSession,
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
 ) -> Result<(), rooms::Error> {
     state.rooms.delete_room(room_id).await?;
-    let _ = state.gallary_tx.send(RoomDelta::Removed(room_id));
+    let _ = state.rooms.gallery_tx.send(RoomDelta::Removed(room_id));
     Ok(())
 }
 
@@ -117,7 +138,6 @@ impl IntoResponse for rooms::Error {
 
         let status = match &self {
             rooms::Error::NotFound => StatusCode::NOT_FOUND,
-            rooms::Error::AlreadyExists => StatusCode::CONFLICT,
             rooms::Error::InvalidArgument(_) => StatusCode::BAD_REQUEST,
             rooms::Error::Decoding(_) | rooms::Error::Backend { .. } => {
                 StatusCode::INTERNAL_SERVER_ERROR
