@@ -60,12 +60,24 @@ async fn sse_handler(
         };
 
         let event = match delta {
-            RoomDelta::Added(room_info) => Event::default()
-                .event("room-added")
-                .data(serde_json::to_string(&room_info).unwrap()),
-            RoomDelta::Updated(room_info) => Event::default()
-                .event("room-updated")
-                .data(serde_json::to_string(&room_info).unwrap()),
+            RoomDelta::Added(room_info) => {
+                let Some(data) = serde_json::to_string(&room_info)
+                    .map_err(|e| tracing::error!(error = ?e, "failed to serialize room-added"))
+                    .ok()
+                else {
+                    return None;
+                };
+                Event::default().event("room-added").data(data)
+            }
+            RoomDelta::Updated(room_info) => {
+                let Some(data) = serde_json::to_string(&room_info)
+                    .map_err(|e| tracing::error!(error = ?e, "failed to serialize room-updated"))
+                    .ok()
+                else {
+                    return None;
+                };
+                Event::default().event("room-updated").data(data)
+            }
             RoomDelta::Removed(room_id) => Event::default()
                 .event("room-removed")
                 .data(room_id.to_string()),
