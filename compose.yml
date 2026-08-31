@@ -2,6 +2,8 @@ services:
   postgres:
     image: docker.io/library/postgres:18
     container_name: local-postgres
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: dionysus
       POSTGRES_PASSWORD: dionysus

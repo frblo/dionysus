@@ -2,6 +2,7 @@ use axum::extract::ws::WebSocket;
 use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use uuid::Uuid;
 use yrs::sync::{DefaultProtocol, Protocol};
 use yrs::updates::encoder::{Encoder, EncoderV1};
 use yrs_axum::{
@@ -24,7 +25,7 @@ pub async fn peer(
     ws: WebSocket,
     rooms: RoomManager,
     bcast: Arc<BroadcastGroup>,
-    room_id: String,
+    room_id: Uuid,
     request_id: String,
 ) {
     let (sink, stream) = ws.split();
@@ -63,5 +64,5 @@ pub async fn peer(
         Err(e) => tracing::warn!(error = %e, "websocket connection closed abnormally"),
     }
 
-    rooms.disconnect(&room_id).await;
+    rooms.disconnect(room_id).await;
 }

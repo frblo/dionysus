@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use sqlx::{Executor, Postgres, Transaction};
+use uuid::Uuid;
 
 use crate::db::Db;
 use crate::rooms::error::Error;
@@ -24,26 +25,11 @@ pub struct DatabaseStorage {
 impl DatabaseStorage {
     pub async fn new(db: Db) -> Self {
         let storage = Self { db };
-        storage
-            .create_room(
-                "demo-room-1",
-                CreateRoomOptions {
-                    ..Default::default()
-                },
-            )
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!(
-                    error = %e,
-                    "failed to seed demo room during storage initialization"
-                );
-                panic!("Initialization calls should work");
-            });
 
         storage
     }
 
-    async fn alloc_seq_range<'e, E>(ex: E, room_id: &str, n: i64) -> Result<(i64, i64), Error>
+    async fn alloc_seq_range<'e, E>(ex: E, room_id: Uuid, n: i64) -> Result<(i64, i64), Error>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -79,7 +65,7 @@ impl DatabaseStorage {
 
 #[async_trait]
 impl Storage for DatabaseStorage {
-    async fn room_exists(&self, room_id: &str) -> Result<bool, Error> {
+    async fn room_exists(&self, room_id: Uuid) -> Result<bool, Error> {
         let r = sqlx::query!(
             r#"SELECT
                    EXISTS (
@@ -98,26 +84,45 @@ impl Storage for DatabaseStorage {
         Ok(r.exists)
     }
 
-    async fn create_room(&self, room_id: &str, opts: CreateRoomOptions) -> Result<(), Error> {
-        let res = sqlx::query!(
+    async fn create_room(
+        &self,
+        room_name: &str,
+        _opts: CreateRoomOptions,
+    ) -> Result<RoomInfo, Error> {
+        if room_name.is_empty() {
+            return Err(Error::InvalidArgument(
+                "Room name cannot be an empty string".to_string(),
+            ));
+        }
+
+        let mut tx: Transaction<'_, Postgres> =
+            self.db.pool().begin().await.map_err(Error::from)?;
+
+        let row = sqlx::query!(
             r#"
-            INSERT INTO rooms (room_id, last_seq)
+            INSERT INTO rooms (room_name, last_seq)
                 VALUES ($1, 0)
-            ON CONFLICT (room_id)
-                DO NOTHING"#,
-            room_id
+            RETURNING
+                room_id,
+                room_name,
+                last_seq"#,
+            room_name
         )
-        .execute(self.db.pool())
+        .fetch_one(&mut *tx)
         .await
         .map_err(Error::from)?;
 
-        if opts.fail_if_exists && res.rows_affected() == 0 {
-            return Err(Error::AlreadyExists);
-        }
-        Ok(())
+        tx.commit().await.map_err(Error::from)?;
+
+        Ok(RoomInfo {
+            room_id: row.room_id,
+            room_name: row.room_name,
+            last_seq: row.last_seq as u64,
+            latest_snapshot: None,
+        })
     }
 
-    async fn delete_room(&self, room_id: &str) -> Result<(), Error> {
+    async fn delete_room(&self, room_id: Uuid) -> Result<(), Error> {
         // Assumes FK ON DELETE CASCADE to updates/snapshots.
         sqlx::query!(
             r#"DELETE FROM rooms
@@ -130,11 +135,40 @@ impl Storage for DatabaseStorage {
         Ok(())
     }
 
+    async fn rename_room(&self, room_id: Uuid, new_name: &str) -> Result<RoomInfo, Error> {
+        let row = sqlx::query!(
+            r#"UPDATE rooms
+                SET room_name = $1
+                WHERE room_id = $2
+                RETURNING
+                    room_id,
+                    room_name,
+                    last_seq"#,
+            new_name,
+            room_id,
+        )
+        .fetch_optional(self.db.pool())
+        .await
+        .map_err(Error::from)?;
+
+        let Some(row) = row else {
+            return Err(Error::NotFound);
+        };
+
+        Ok(RoomInfo {
+            room_id: row.room_id,
+            room_name: row.room_name,
+            last_seq: row.last_seq as u64,
+            latest_snapshot: None,
+        })
+    }
+
     async fn list_rooms(&self) -> Result<Vec<RoomInfo>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT
                 r.room_id,
+                r.room_name,
                 r.last_seq,
                 s.covered_through AS "snap_covered?",
                 s.size_bytes AS snap_size
@@ -162,6 +196,7 @@ impl Storage for DatabaseStorage {
             .into_iter()
             .map(|r| RoomInfo {
                 room_id: r.room_id,
+                room_name: r.room_name,
                 last_seq: r.last_seq as u64,
                 latest_snapshot: r.snap_covered.map(|ct| SnapshotInfo {
                     covered_through: ct as u64,
@@ -171,11 +206,12 @@ impl Storage for DatabaseStorage {
             .collect())
     }
 
-    async fn get_room_info(&self, room_id: &str) -> Result<Option<RoomInfo>, Error> {
+    async fn get_room_info(&self, room_id: Uuid) -> Result<Option<RoomInfo>, Error> {
         let row = sqlx::query!(
             r#"
             SELECT
                 r.room_id,
+                r.room_name,
                 r.last_seq,
                 s.covered_through AS "snap_covered?",
                 s.size_bytes AS snap_size
@@ -202,6 +238,7 @@ impl Storage for DatabaseStorage {
 
         Ok(row.map(|r| RoomInfo {
             room_id: r.room_id,
+            room_name: r.room_name,
             last_seq: r.last_seq as u64,
             latest_snapshot: r.snap_covered.map(|ct| SnapshotInfo {
                 covered_through: ct as u64,
@@ -210,7 +247,7 @@ impl Storage for DatabaseStorage {
         }))
     }
 
-    async fn append_update(&self, room_id: &str, update: &[u8]) -> Result<LogSeq, Error> {
+    async fn append_update(&self, room_id: Uuid, update: &[u8]) -> Result<LogSeq, Error> {
         let mut tx: Transaction<'_, Postgres> =
             self.db.pool().begin().await.map_err(Error::from)?;
 
@@ -235,7 +272,7 @@ impl Storage for DatabaseStorage {
 
     async fn append_updates(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         updates: &[Vec<u8>],
     ) -> Result<(LogSeq, LogSeq), Error> {
         if updates.is_empty() {
@@ -282,7 +319,7 @@ impl Storage for DatabaseStorage {
 
     async fn load_updates(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         opts: LoadUpdatesOptions,
     ) -> Result<Vec<UpdateEntry>, Error> {
         let from: i64 = opts.from.map_or(1, |v| v as i64);
@@ -319,7 +356,7 @@ impl Storage for DatabaseStorage {
             .collect())
     }
 
-    async fn store_snapshot(&self, room_id: &str, snapshot: Snapshot) -> Result<(), Error> {
+    async fn store_snapshot(&self, room_id: Uuid, snapshot: Snapshot) -> Result<(), Error> {
         // Upsert snapshot by (room_id, covered_through).
         // You may want to enforce snapshot.covered_through <= rooms.last_seq in a later iteration.
         sqlx::query!(
@@ -342,7 +379,7 @@ impl Storage for DatabaseStorage {
 
     async fn load_snapshot_at(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         covered_through: LogSeq,
     ) -> Result<Option<Snapshot>, Error> {
         let row = sqlx::query!(
@@ -370,7 +407,7 @@ impl Storage for DatabaseStorage {
 
     async fn load_snapshot_best(
         &self,
-        room_id: &str,
+        room_id: Uuid,
         max_covered_through: Option<LogSeq>,
     ) -> Result<Option<Snapshot>, Error> {
         let row = sqlx::query!(
@@ -400,7 +437,7 @@ impl Storage for DatabaseStorage {
         }))
     }
 
-    async fn list_snapshots(&self, room_id: &str) -> Result<Vec<SnapshotInfo>, Error> {
+    async fn list_snapshots(&self, room_id: Uuid) -> Result<Vec<SnapshotInfo>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT

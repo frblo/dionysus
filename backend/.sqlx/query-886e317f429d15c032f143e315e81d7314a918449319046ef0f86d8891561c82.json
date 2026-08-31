@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO rooms (room_name, last_seq)\n                VALUES ($1, 0)\n            RETURNING\n                room_id,\n                room_name,\n                last_seq",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "room_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "room_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_seq",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "886e317f429d15c032f143e315e81d7314a918449319046ef0f86d8891561c82"
+}

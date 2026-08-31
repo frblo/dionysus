@@ -27,7 +27,7 @@
   const wsUrl = `${proto}//${location.host}/rooms/ws`;
 
   let {
-    room = "demo-room-1",
+    room = "",
     user = {
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",

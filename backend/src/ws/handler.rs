@@ -4,6 +4,7 @@ use axum::{
     response::IntoResponse,
 };
 use tower_http::request_id::RequestId;
+use uuid::Uuid;
 
 use crate::ws;
 use crate::{auth::AuthSession, state::AppState};
@@ -12,7 +13,7 @@ use crate::{auth::AuthSession, state::AppState};
 pub async fn ws_handler(
     AuthSession(session): AuthSession,
     ws: WebSocketUpgrade,
-    Path(room_id): Path<String>,
+    Path(room_id): Path<Uuid>,
     State(state): State<AppState>,
     Extension(request_id): Extension<RequestId>,
 ) -> impl IntoResponse {
@@ -24,7 +25,7 @@ pub async fn ws_handler(
 
     tracing::info!("handling websocket upgrade request");
 
-    let room = match state.rooms.connect(&room_id).await {
+    let room = match state.rooms.connect(room_id).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!(error = %e, "failed to connect to room");
