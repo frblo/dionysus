@@ -16,7 +16,7 @@
     <a href="/help" target="_blank" rel="noreferrer">
       <button
         class="p-2 text-gray-400 hover:text-white transition-colors"
-        title="Report issue"
+        title="Help"
       >
         <QuestionCircle />
       </button>
