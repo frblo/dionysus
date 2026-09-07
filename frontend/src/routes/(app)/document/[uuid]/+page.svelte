@@ -71,7 +71,7 @@
 </script>
 
 <svelte:head>
-  <title>Dionysus - {page.data.roomInfo?.room_name}</title>
+  <title>{page.data.roomInfo?.room_name} - Dionysus</title>
 </svelte:head>
 
 <Header title={page.data.roomInfo?.room_name}>
