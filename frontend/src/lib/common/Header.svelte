@@ -33,7 +33,7 @@
   </div>
 
   <!-- Right part -->
-  <div class="flex items-center gap-2 mt-5 ml-auto">
+  <div class="flex items-center gap-2 ml-auto">
     {@render children?.()}
   </div>
 </header>
