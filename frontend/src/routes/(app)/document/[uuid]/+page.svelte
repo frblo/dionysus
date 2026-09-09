@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
 
   import {
@@ -68,6 +69,8 @@
     editorViewSettings.sidebarMenuOpen =
       editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
   }
+
+  afterNavigate(() => preview.reset());
 </script>
 
 <svelte:head>

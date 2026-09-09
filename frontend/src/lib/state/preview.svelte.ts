@@ -10,6 +10,13 @@ class PreviewState {
     this.html = generate_html(script);
   };
 
+  reset = () => {
+    this.html = "";
+    this.targetLine = 0;
+    this.scrollTick = 0;
+    this.scrollBehavior = "nearest";
+  };
+
   scrollToLine = (line: number) => {
     this.targetLine = line;
     this.scrollTick++;
