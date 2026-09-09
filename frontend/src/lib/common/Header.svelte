@@ -20,11 +20,14 @@
   <div class="flex items-center gap-2">
     <a
       href="/"
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8 flex items-center gap-1.5"
+      class="px-3 py-1 rounded bg-[#f77f00] text-gray-100 text-xs font-medium hover:bg-[#fcbf49] transition h-8 flex items-center gap-1.5"
       title="Home"
     >
       <House />
     </a>
+    {#if leftChildren}
+      <div class="w-px h-6 bg-gray-700 mx-1" aria-hidden="true"></div>
+    {/if}
     {@render leftChildren?.()}
   </div>
 
