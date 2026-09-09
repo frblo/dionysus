@@ -5,9 +5,11 @@
   let {
     title = "",
     children,
+    leftChildren,
   }: {
     title?: string;
     children?: Snippet;
+    leftChildren?: Snippet;
   } = $props();
 </script>
 
@@ -23,6 +25,7 @@
     >
       <House />
     </a>
+    {@render leftChildren?.()}
   </div>
 
   <!-- Middle part -->

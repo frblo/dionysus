@@ -6,6 +6,8 @@
     Download,
     FileText,
     BoxArrowInDownRight,
+    ArrowCounterclockwise,
+    ArrowClockwise,
   } from "svelte-bootstrap-icons";
 
   import Editor from "$lib/editor/Editor.svelte";
@@ -78,6 +80,24 @@
 </svelte:head>
 
 <Header title={page.data.roomInfo?.room_name}>
+  {#snippet leftChildren()}
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => editorRef?.undo()}
+      title="Undo"
+    >
+      <ArrowCounterclockwise />
+    </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => editorRef?.redo()}
+      title="Redo"
+    >
+      <ArrowClockwise />
+    </button>
+  {/snippet}
+
   <button
     class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
     onclick={() =>
