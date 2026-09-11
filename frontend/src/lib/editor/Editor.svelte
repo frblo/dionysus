@@ -38,13 +38,14 @@
 
   let view: EditorView | null = null;
   let provider: WebsocketProvider | null = null;
+  let undoManager: Y.UndoManager | null = null;
 
   onMount(() => {
     const ydoc = new Y.Doc();
     provider = new WebsocketProvider(wsUrl, room, ydoc);
     const ytext = ydoc.getText("codemirror");
 
-    const undoManager = new Y.UndoManager(ytext);
+    undoManager = new Y.UndoManager(ytext);
 
     provider.awareness.setLocalStateField("user", user);
 
@@ -71,14 +72,14 @@
             {
               key: "Mod-z",
               run: () => {
-                undoManager.undo();
+                undoManager?.undo();
                 return true;
               },
             },
             {
               key: "Mod-Shift-z",
               run: () => {
-                undoManager.redo();
+                undoManager?.redo();
                 return true;
               },
             },
@@ -141,6 +142,14 @@
       effects: EditorView.scrollIntoView(pos, { y: "start" }),
     });
     view.focus();
+  }
+
+  export function undo() {
+    undoManager?.undo();
+  }
+
+  export function redo() {
+    undoManager?.redo();
   }
 </script>
 
