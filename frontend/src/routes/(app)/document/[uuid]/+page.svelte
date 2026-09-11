@@ -8,6 +8,9 @@
     BoxArrowInDownRight,
     ArrowCounterclockwise,
     ArrowClockwise,
+    TypeBold,
+    TypeItalic,
+    TypeUnderline,
   } from "svelte-bootstrap-icons";
 
   import Editor from "$lib/editor/Editor.svelte";
@@ -81,6 +84,32 @@
 
 <Header title={page.data.roomInfo?.room_name}>
   {#snippet leftChildren()}
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => editorRef?.surroundSelection("*", "*")}
+      title="Italic"
+    >
+      <TypeItalic />
+    </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => editorRef?.surroundSelection("**", "**")}
+      title="Bold"
+    >
+      <TypeBold />
+    </button>
+
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => editorRef?.surroundSelection("_", "_")}
+      title="Underline"
+    >
+      <TypeUnderline />
+    </button>
+
+    <div class="w-px h-5 bg-gray-600"></div>
+
     <button
       class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
       onclick={() => editorRef?.undo()}
