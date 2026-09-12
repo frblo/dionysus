@@ -83,6 +83,27 @@
                 return true;
               },
             },
+            {
+              key: "Mod-u",
+              run: () => {
+                surroundSelection("_", "_");
+                return true;
+              },
+            },
+            {
+              key: "Mod-i",
+              run: () => {
+                surroundSelection("*", "*");
+                return true;
+              },
+            },
+            {
+              key: "Mod-b",
+              run: () => {
+                surroundSelection("**", "**");
+                return true;
+              },
+            },
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
