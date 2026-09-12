@@ -1,3 +1,4 @@
+mod identity;
 mod oidc;
 mod routes;
 mod session;
@@ -20,8 +21,10 @@ use thiserror::Error;
 
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
 use crate::config::Config;
+use crate::db::Db;
 use crate::state::AppState;
 
+pub use identity::{IdentityStore, UserId};
 pub use session::AuthSession;
 pub use session::Session;
 pub use session_store::SessionStore;
@@ -43,8 +46,11 @@ pub enum AuthError {
     #[error("id token verification failed")]
     IdTokenVerification,
 
-    #[error("error initilizing auth: {source}")]
-    Initilization {
+    #[error("identity resolution failed: {0}")]
+    Identity(#[from] identity::Error),
+
+    #[error("error initializing auth: {source}")]
+    Initialization {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
@@ -55,14 +61,15 @@ pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
     pending: PendingLoginStore,
     sessions: SessionStore,
+    identity: IdentityStore,
     external_base_url: String,
 }
 
 impl AuthManager {
-    pub async fn new(cfg: &Config) -> Result<Self, AuthError> {
+    pub async fn new(cfg: &Config, db: Db) -> Result<Self, AuthError> {
         let oidc = OidcRegistry::new(&cfg.oidc)
             .await
-            .map_err(|e| AuthError::Initilization {
+            .map_err(|e| AuthError::Initialization {
                 source: Box::new(e),
             })?;
 
@@ -70,12 +77,23 @@ impl AuthManager {
 
         let sessions = SessionStore::new();
 
-        Ok(Self {
+        let manager = Self {
             oidc: Arc::new(oidc),
-            pending,
+            pending: pending.clone(),
             sessions,
+            identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
-        })
+        };
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_mins(1));
+            loop {
+                interval.tick().await;
+                pending.gc().await;
+            }
+        });
+
+        Ok(manager)
     }
 
     pub async fn get_session(&self, session_id: &str) -> Option<Session> {
@@ -180,7 +198,7 @@ impl AuthManager {
             .claims(&client.id_token_verifier(), &pl.nonce)
             .map_err(|_| AuthError::IdTokenVerification)?;
 
-        let user_id = format!("{}|{}", provider_id, claims.subject().as_str());
+        let subject = claims.subject().as_str();
         let display_name = claims
             .preferred_username()
             .map(|s| s.to_string())
@@ -189,14 +207,16 @@ impl AuthManager {
                 .name()
                 .and_then(|s| s.get(None))
                 .map(|s| s.to_string()))
-            .unwrap_or_else(|| user_id.clone());
+            .unwrap_or_else(|| subject.to_string());
+
+        let (user_id, is_new) = self
+            .identity
+            .resolve_or_create(provider_id, subject, &display_name)
+            .await?;
 
         let session_id = rand_str(64);
         self.sessions
-            .insert(
-                session_id.clone(),
-                Session::new(user_id.clone(), display_name),
-            )
+            .insert(session_id.clone(), Session::new(user_id, display_name))
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");
@@ -243,7 +263,8 @@ impl IntoResponse for AuthError {
             AuthError::IdTokenVerification => {
                 (StatusCode::UNAUTHORIZED, "id_token_verification_failed")
             }
-            AuthError::Initilization { source: _ } => {
+            AuthError::Identity(_) => (StatusCode::INTERNAL_SERVER_ERROR, "identity_backend_error"),
+            AuthError::Initialization { source: _ } => {
                 unreachable!("Should never call this from an Axum thing")
             }
         };
