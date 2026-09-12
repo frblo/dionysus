@@ -19,6 +19,11 @@ export function createVim(undoManager: Y.UndoManager) {
   Vim.map("u", ":yundo<CR>", "normal");
   Vim.map("<C-r>", ":yredo<CR>", "normal");
 
+  // Remove vim bindings that conflict with the formatting shortcuts
+  Vim.unmap("<C-u>", undefined as any);
+  Vim.unmap("<C-i>", undefined as any);
+  Vim.unmap("<C-b>", undefined as any);
+
   return vimCompartment.of(vim());
 }
 

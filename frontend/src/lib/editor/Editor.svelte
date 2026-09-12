@@ -4,7 +4,7 @@
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
-  import { EditorState } from "@codemirror/state";
+  import { EditorState, EditorSelection } from "@codemirror/state";
   import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
   import * as Y from "yjs";
@@ -83,6 +83,27 @@
                 return true;
               },
             },
+            {
+              key: "Mod-u",
+              run: () => {
+                surroundSelection("_", "_");
+                return true;
+              },
+            },
+            {
+              key: "Mod-i",
+              run: () => {
+                surroundSelection("*", "*");
+                return true;
+              },
+            },
+            {
+              key: "Mod-b",
+              run: () => {
+                surroundSelection("**", "**");
+                return true;
+              },
+            },
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
@@ -150,6 +171,120 @@
 
   export function redo() {
     undoManager?.redo();
+  }
+
+  export function surroundSelection(prefix: string, suffix: string) {
+    if (!view) return;
+    const state = view.state;
+    const prefixLength = prefix.length;
+    const changes: { from: number; to: number; insert: string }[] = [];
+    const selections: { anchor: number; head: number }[] = [];
+    let offset = 0;
+
+    for (const range of state.selection.ranges) {
+      const from = range.from;
+      const to = range.to;
+      const length = to - from;
+
+      if (length === 0) {
+        const line = state.doc.lineAt(from);
+        const lineFrom = line.from;
+        const lineText = line.text;
+        const pos = from - lineFrom;
+
+        let open = -1;
+        for (let i = pos - prefixLength; i >= 0; i--) {
+          if (lineText.slice(i, i + prefixLength) === prefix) {
+            open = i;
+            break;
+          }
+        }
+
+        let close = -1;
+        if (
+          open !== -1 &&
+          !lineText.slice(open + prefixLength, pos).includes(suffix)
+        ) {
+          const remaining = lineText.slice(pos);
+          const idx = remaining.indexOf(suffix);
+          if (idx !== -1 && !lineText.slice(pos, pos + idx).includes(prefix)) {
+            close = pos + idx;
+          }
+        }
+
+        if (close !== -1) {
+          changes.push({
+            from: lineFrom + open,
+            to: lineFrom + open + prefixLength,
+            insert: "",
+          });
+          changes.push({
+            from: lineFrom + close,
+            to: lineFrom + close + prefixLength,
+            insert: "",
+          });
+          selections.push({
+            anchor: from - prefixLength + offset,
+            head: from - prefixLength + offset,
+          });
+          offset -= 2 * prefixLength;
+        } else {
+          changes.push({ from, to, insert: prefix + suffix });
+          selections.push({
+            anchor: from + offset + prefixLength,
+            head: from + offset + prefixLength,
+          });
+          offset += 2 * prefixLength;
+        }
+      } else {
+        const wrappedOutside =
+          from - prefixLength >= 0 &&
+          to + prefixLength <= state.doc.length &&
+          state.sliceDoc(from - prefixLength, from) === prefix &&
+          state.sliceDoc(to, to + prefixLength) === suffix;
+
+        if (wrappedOutside) {
+          changes.push({ from: from - prefixLength, to: from, insert: "" });
+          changes.push({ from: to, to: to + prefixLength, insert: "" });
+          selections.push({
+            anchor: from - prefixLength + offset,
+            head: from - prefixLength + offset + length,
+          });
+          offset -= 2 * prefixLength;
+        } else {
+          const wrappedInside =
+            prefixLength < length &&
+            state.sliceDoc(from, from + prefixLength) === prefix &&
+            state.sliceDoc(to - prefixLength, to) === suffix;
+
+          if (wrappedInside) {
+            changes.push({ from, to: from + prefixLength, insert: "" });
+            changes.push({ from: to - prefixLength, to, insert: "" });
+            selections.push({
+              anchor: from + offset,
+              head: from + offset + length - 2 * prefixLength,
+            });
+            offset -= 2 * prefixLength;
+          } else {
+            const selected = state.sliceDoc(from, to);
+            changes.push({ from, to, insert: prefix + selected + suffix });
+            selections.push({
+              anchor: from + offset + prefixLength,
+              head: from + offset + prefixLength + selected.length,
+            });
+            offset += 2 * prefixLength;
+          }
+        }
+      }
+    }
+
+    view.dispatch({
+      changes,
+      selection: EditorSelection.create(
+        selections.map((s) => EditorSelection.range(s.anchor, s.head)),
+      ),
+    });
+    view.focus();
   }
 </script>
 
