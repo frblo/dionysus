@@ -5,7 +5,7 @@ use axum_extra::extract::{CookieJar, cookie::Cookie};
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::auth::AuthError;
+use crate::auth::{AuthError, UserId};
 use crate::{auth::session::AuthSession, state::AppState};
 
 #[derive(Serialize)]
@@ -20,7 +20,7 @@ pub async fn providers(State(state): State<AppState>) -> Json<ProviderList> {
 
 #[derive(Serialize)]
 pub struct Me {
-    user_id: String,
+    user_id: UserId,
     display_name: String,
 }
 

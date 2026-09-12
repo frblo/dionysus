@@ -4,16 +4,16 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 
-use crate::auth::AuthManager;
+use crate::auth::{AuthManager, UserId};
 
 #[derive(Clone)]
 pub struct Session {
-    pub user_id: String,
+    pub user_id: UserId,
     pub display_name: String,
 }
 
 impl Session {
-    pub fn new(user_id: String, display_name: String) -> Self {
+    pub fn new(user_id: UserId, display_name: String) -> Self {
         Self {
             user_id,
             display_name,

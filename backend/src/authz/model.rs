@@ -2,19 +2,19 @@ use std::collections::HashSet;
 
 use uuid::Uuid;
 
-use crate::auth::Session;
+use crate::auth::{Session, UserId};
 
 /// The actor who is asking about something.
 #[derive(Debug, Clone)]
 pub struct Actor {
-    pub external_id: String,
+    pub id: UserId,
     pub display_name: String,
 }
 
 impl From<&Session> for Actor {
     fn from(session: &Session) -> Self {
         Self {
-            external_id: session.user_id.clone(),
+            id: session.user_id,
             display_name: session.display_name.clone(),
         }
     }
@@ -119,9 +119,10 @@ mod tests {
 
     #[test]
     fn actor_borrows_identity_from_session() {
-        let session = Session::new("google|123".to_string(), "Ada".to_string());
+        let id = UserId(Uuid::from_u128(1));
+        let session = Session::new(id, "Ada".to_string());
         let actor = Actor::from(&session);
-        assert_eq!(actor.external_id, "google|123");
+        assert_eq!(actor.id, id);
         assert_eq!(actor.display_name, "Ada");
     }
 }

@@ -24,6 +24,12 @@ pub trait RoleSource: Send + Sync + 'static {
 #[async_trait]
 pub trait RoleStore: RoleSource {
     async fn set_global_role(&self, subject: &Actor, role: GlobalRole) -> Result<(), Error>;
+
+    /// Called once, right after `actor` is created as a brand-new user.
+    /// Lets a store apply its own user-bootstrap rule.
+    ///
+    /// Should be a no-op for a store with nothing to do.
+    async fn on_user_created(&self, actor: &Actor) -> Result<(), Error>;
 }
 
 /// Room membership storage
@@ -195,6 +201,14 @@ impl AuthzManager {
         match &self.role_store {
             Some(store) => store.set_global_role(subject, role).await,
             None => Err(Error::Unsupported),
+        }
+    }
+
+    /// A missing [`RoleStore`] is just treated like there is nothing to do.
+    pub async fn on_user_created(&self, actor: &Actor) -> Result<(), Error> {
+        match &self.role_store {
+            Some(store) => store.on_user_created(actor).await,
+            None => Ok(()),
         }
     }
 }
