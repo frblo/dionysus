@@ -84,64 +84,70 @@
 
 <Header title={page.data.roomInfo?.room_name}>
   {#snippet leftChildren()}
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => editorRef?.surroundSelection("*", "*")}
-      title="Italic"
-    >
-      <TypeItalic />
-    </button>
+    {#if editorViewSettings.panelFocus !== PanelFocus.PreviewOnly}
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.surroundSelection("*", "*")}
+        title="Italic"
+      >
+        <TypeItalic />
+      </button>
 
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => editorRef?.surroundSelection("**", "**")}
-      title="Bold"
-    >
-      <TypeBold />
-    </button>
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.surroundSelection("**", "**")}
+        title="Bold"
+      >
+        <TypeBold />
+      </button>
 
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => editorRef?.surroundSelection("_", "_")}
-      title="Underline"
-    >
-      <TypeUnderline />
-    </button>
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.surroundSelection("_", "_")}
+        title="Underline"
+      >
+        <TypeUnderline />
+      </button>
 
-    <div class="w-px h-5 bg-gray-600"></div>
+      <div class="w-px h-5 bg-gray-600"></div>
 
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => editorRef?.undo()}
-      title="Undo"
-    >
-      <ArrowCounterclockwise />
-    </button>
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.undo()}
+        title="Undo"
+      >
+        <ArrowCounterclockwise />
+      </button>
 
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() => editorRef?.redo()}
-      title="Redo"
-    >
-      <ArrowClockwise />
-    </button>
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.redo()}
+        title="Redo"
+      >
+        <ArrowClockwise />
+      </button>
+    {/if}
   {/snippet}
 
-  <button
-    class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-    onclick={() =>
-      preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0)}
-    title="Sync preview to cursor position"
-  >
-    <BoxArrowInDownRight />
-  </button>
+  {#if editorViewSettings.panelFocus === PanelFocus.Both}
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() =>
+        preview.jumpToLine(editorRef ? editorRef.getCursorLine() : 0)}
+      title="Sync preview to cursor position"
+    >
+      <BoxArrowInDownRight />
+    </button>
+  {/if}
 
-  <button
-    class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-    onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
-  >
-    {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
-  </button>
+  {#if editorViewSettings.panelFocus !== PanelFocus.PreviewOnly}
+    <button
+      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+      onclick={() => (userSettings.vimEnabled = !userSettings.vimEnabled)}
+    >
+      {userSettings.vimEnabled ? "Vim ON" : "Vim OFF"}
+    </button>
+  {/if}
 
   <select
     class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium bg-[#252526] hover:bg-[#3c3c3c] transition h-8 cursor-pointer"
