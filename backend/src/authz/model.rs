@@ -67,6 +67,29 @@ pub enum RoomRole {
     Viewer,
 }
 
+impl RoomRole {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RoomRole::Owner => "owner",
+            RoomRole::Editor => "editor",
+            RoomRole::Viewer => "viewer",
+        }
+    }
+}
+
+impl std::str::FromStr for RoomRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "owner" => Ok(RoomRole::Owner),
+            "editor" => Ok(RoomRole::Editor),
+            "viewer" => Ok(RoomRole::Viewer),
+            other => Err(format!("unknown room role: {other}")),
+        }
+    }
+}
+
 /// App-wide role, separate from room membership.
 ///
 /// [`Self::Admin`] >= [`Self::User`] >= [`Self::Guest`].
@@ -91,12 +114,33 @@ impl GlobalRole {
     pub fn is_admin(self) -> bool {
         matches!(self, GlobalRole::Admin)
     }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            GlobalRole::Guest => "guest",
+            GlobalRole::User => "user",
+            GlobalRole::Admin => "admin",
+        }
+    }
+}
+
+impl std::str::FromStr for GlobalRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "guest" => Ok(GlobalRole::Guest),
+            "user" => Ok(GlobalRole::User),
+            "admin" => Ok(GlobalRole::Admin),
+            other => Err(format!("unknown global role: {other}")),
+        }
+    }
 }
 
 /// A member in a room.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct RoomMember {
-    pub external_id: String,
+    pub user_id: UserId,
     pub display_name: String,
     pub role: RoomRole,
 }
@@ -124,5 +168,21 @@ mod tests {
         let actor = Actor::from(&session);
         assert_eq!(actor.id, id);
         assert_eq!(actor.display_name, "Ada");
+    }
+
+    #[test]
+    fn room_role_round_trips_through_str() {
+        for role in [RoomRole::Owner, RoomRole::Editor, RoomRole::Viewer] {
+            assert_eq!(role.as_str().parse::<RoomRole>().unwrap(), role);
+        }
+        assert!("nonsense".parse::<RoomRole>().is_err());
+    }
+
+    #[test]
+    fn global_role_round_trips_through_str() {
+        for role in [GlobalRole::Guest, GlobalRole::User, GlobalRole::Admin] {
+            assert_eq!(role.as_str().parse::<GlobalRole>().unwrap(), role);
+        }
+        assert!("nonsense".parse::<GlobalRole>().is_err());
     }
 }

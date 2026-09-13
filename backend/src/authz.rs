@@ -1,5 +1,6 @@
 mod error;
 mod model;
+mod pg;
 mod policy;
 
 use std::sync::Arc;
@@ -11,6 +12,7 @@ pub use error::Error;
 pub use model::{
     Actor, CollectionAction, Decision, GlobalRole, RoomAction, RoomMember, RoomRole, RoomScope,
 };
+pub use pg::PgAuthz;
 use policy::{global_role_allows, may_hold_room_role, room_role_allows};
 
 /// Resolves an actor's global role.
