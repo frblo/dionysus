@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO user_roles (user_id, global_role)\n            VALUES ($1, $2)\n            ON CONFLICT (user_id) DO UPDATE SET global_role = $2, updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbc32dee621c4fbb335cd0d3498e7423067ca8a666bad00dd48852852b93fe07"
+}

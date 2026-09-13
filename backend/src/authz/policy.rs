@@ -1,4 +1,4 @@
-use super::model::{CollectionAction, GlobalRole, RoomAction, RoomRole};
+use crate::authz::model::{CollectionAction, GlobalRole, RoomAction, RoomRole};
 
 pub fn room_role_allows(role: RoomRole, action: RoomAction) -> bool {
     use RoomAction::*;
