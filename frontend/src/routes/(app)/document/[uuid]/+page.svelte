@@ -22,6 +22,7 @@
     PanelFocus,
   } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
+  import { sessionState } from "$lib/state/session.svelte";
   import Header from "$lib/common/Header.svelte";
   import Sidebar from "$lib/common/Sidebar.svelte";
 
@@ -46,7 +47,7 @@
 
   let editorRef = $state(<Editor | null>null);
 
-  const name = page.data.me?.display_name;
+  const name = sessionState.current?.user.display_name;
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const roomId = page.data.roomInfo?.room_id;

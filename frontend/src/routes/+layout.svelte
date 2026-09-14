@@ -1,8 +1,14 @@
 <script lang="ts">
   import "../app.css";
   import favicon from "$lib/assets/favicon.svg";
+  import type { LayoutData } from "./$types";
+  import { sessionState } from "$lib/state/session.svelte";
 
-  let { children } = $props();
+  let { data, children }: { data: LayoutData; children: any } = $props();
+
+  $effect(() => {
+    sessionState.current = data.session;
+  });
 </script>
 
 <svelte:head>

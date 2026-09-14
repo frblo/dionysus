@@ -29,6 +29,8 @@ impl From<sqlx::Error> for Error {
 /// Stable id for one person, independent of which OIDC provider they log in with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UserId.ts"))]
 pub struct UserId(pub Uuid);
 
 impl fmt::Display for UserId {

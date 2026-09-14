@@ -20,6 +20,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
+use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
 use crate::db::Db;
 use crate::state::AppState;
@@ -48,6 +49,9 @@ pub enum AuthError {
 
     #[error("identity resolution failed: {0}")]
     Identity(#[from] identity::Error),
+
+    #[error("authorization backend error: {0}")]
+    Authz(#[from] crate::authz::Error),
 
     #[error("error initializing auth: {source}")]
     Initialization {
@@ -156,12 +160,17 @@ impl AuthManager {
     }
 
     /// The [`String`] returned is the session id for the completed login.
+    ///
+    /// Resolves identity, runs `authz`'s new-user bootstrap when this login
+    /// created the account, and resolves the [`GlobalRole`](crate::authz::GlobalRole)
+    /// to stash on the [`Session`].
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn finish_login(
         &self,
         provider_id: &str,
         code: String,
         state: String,
+        authz: &AuthzManager,
     ) -> Result<String, AuthError> {
         let pl = self
             .pending
@@ -214,9 +223,21 @@ impl AuthManager {
             .resolve_or_create(provider_id, subject, &display_name)
             .await?;
 
+        let actor = Actor {
+            id: user_id,
+            display_name: display_name.clone(),
+        };
+        if is_new {
+            authz.on_user_created(&actor).await?;
+        }
+        let global_role = authz.global_role(&actor).await?;
+
         let session_id = rand_str(64);
         self.sessions
-            .insert(session_id.clone(), Session::new(user_id, display_name))
+            .insert(
+                session_id.clone(),
+                Session::new(user_id, display_name, global_role),
+            )
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");
@@ -264,6 +285,7 @@ impl IntoResponse for AuthError {
                 (StatusCode::UNAUTHORIZED, "id_token_verification_failed")
             }
             AuthError::Identity(_) => (StatusCode::INTERNAL_SERVER_ERROR, "identity_backend_error"),
+            AuthError::Authz(_) => (StatusCode::INTERNAL_SERVER_ERROR, "authz_backend_error"),
             AuthError::Initialization { source: _ } => {
                 unreachable!("Should never call this from an Axum thing")
             }
