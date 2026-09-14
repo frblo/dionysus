@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
+    authz::{self, Actor, CollectionAction, RoomAction, RoomScope},
     rooms::{self, storage::RoomInfo},
     state::AppState,
 };
@@ -91,17 +92,43 @@ async fn sse_handler(
 }
 
 async fn list_rooms(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<RoomInfo>>, rooms::Error> {
-    Ok(Json(state.rooms.list_rooms().await?))
+    let actor = Actor::from(&session);
+    let scope = state.authz.rooms_matching(&actor, RoomAction::View).await?;
+
+    let rooms = state.rooms.list_rooms().await?;
+    let rooms = match scope {
+        RoomScope::All => rooms,
+        RoomScope::Only(ids) => rooms
+            .into_iter()
+            .filter(|r| ids.contains(&r.room_id))
+            .collect(),
+    };
+
+    Ok(Json(rooms))
 }
 
 async fn room_info(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
 ) -> Result<Json<RoomInfo>, rooms::Error> {
+    let actor = Actor::from(&session);
+
+    // Deny manually mapped to not found as to not reveal that a room exists
+    // to someone who can't view it.
+    match state
+        .authz
+        .require_room(&actor, RoomAction::View, room_id)
+        .await
+    {
+        Ok(()) => {}
+        Err(authz::Error::Denied) => return Err(rooms::Error::NotFound),
+        Err(e) => return Err(e.into()),
+    }
+
     match state.rooms.room_info(room_id).await? {
         Some(info) => Ok(Json(info)),
         None => Err(rooms::Error::NotFound),
@@ -114,34 +141,75 @@ struct RenameRoom {
 }
 
 async fn rename(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
     Json(payload): Json<RenameRoom>,
 ) -> Result<(), rooms::Error> {
+    let actor = Actor::from(&session);
+    state
+        .authz
+        .require_room(&actor, RoomAction::Rename, room_id)
+        .await?;
+
     let info = state.rooms.rename_room(room_id, &payload.name).await?;
     let _ = state.rooms.gallery_tx.send(RoomDelta::Updated(info));
     Ok(())
 }
 
 async fn create(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
     Path(room_name): Path<String>,
 ) -> Result<Json<Uuid>, rooms::Error> {
+    let actor = Actor::from(&session);
+    state
+        .authz
+        .require_collection(&actor, CollectionAction::CreateRoom)
+        .await?;
+
     let info = state.rooms.create_room(&room_name).await?;
+
+    if let Err(e) = state.authz.on_room_created(&actor, info.room_id).await {
+        if let Err(cleanup_err) = state.rooms.delete_room(info.room_id).await {
+            tracing::error!(
+                room_id = %info.room_id,
+                error = ?cleanup_err,
+                "failed to clean up room after on_room_created failure"
+            );
+        }
+        return Err(e.into());
+    }
+
     let _ = state.rooms.gallery_tx.send(RoomDelta::Added(info.clone()));
     Ok(Json(info.room_id))
 }
 
 async fn remove(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
 ) -> Result<(), rooms::Error> {
+    let actor = Actor::from(&session);
+    state
+        .authz
+        .require_room(&actor, RoomAction::Delete, room_id)
+        .await?;
+
     state.rooms.delete_room(room_id).await?;
     let _ = state.rooms.gallery_tx.send(RoomDelta::Removed(room_id));
     Ok(())
+}
+
+impl From<authz::Error> for rooms::Error {
+    fn from(value: authz::Error) -> Self {
+        match value {
+            authz::Error::Denied => rooms::Error::Forbidden,
+            authz::Error::Invalid(msg) => rooms::Error::InvalidArgument(msg),
+            authz::Error::Unsupported => rooms::Error::Forbidden,
+            authz::Error::Backend { source } => rooms::Error::Backend { source },
+        }
+    }
 }
 
 impl IntoResponse for rooms::Error {
@@ -150,6 +218,7 @@ impl IntoResponse for rooms::Error {
 
         let status = match &self {
             rooms::Error::NotFound => StatusCode::NOT_FOUND,
+            rooms::Error::Forbidden => StatusCode::FORBIDDEN,
             rooms::Error::InvalidArgument(_) => StatusCode::BAD_REQUEST,
             rooms::Error::Decoding(_) | rooms::Error::Backend { .. } => {
                 StatusCode::INTERNAL_SERVER_ERROR
