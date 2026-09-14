@@ -58,6 +58,8 @@ pub enum RoomScope {
 /// [`Self::Owner`] >= [`Self::Editor`] >= [`Self::Viewer`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "RoomRole.ts"))]
 pub enum RoomRole {
     /// An owner of a room, can do destructive actions like rename and delete.
     Owner,
@@ -95,6 +97,8 @@ impl std::str::FromStr for RoomRole {
 /// [`Self::Admin`] >= [`Self::User`] >= [`Self::Guest`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "GlobalRole.ts"))]
 pub enum GlobalRole {
     /// The default for an account with no grant. Can view/edit whatever
     /// rooms they're a member of, but can't create a room or hold
@@ -164,7 +168,7 @@ mod tests {
     #[test]
     fn actor_borrows_identity_from_session() {
         let id = UserId(Uuid::from_u128(1));
-        let session = Session::new(id, "Ada".to_string());
+        let session = Session::new(id, "Ada".to_string(), GlobalRole::User);
         let actor = Actor::from(&session);
         assert_eq!(actor.id, id);
         assert_eq!(actor.display_name, "Ada");

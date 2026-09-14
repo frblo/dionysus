@@ -5,18 +5,21 @@ use axum::{
 use axum_extra::extract::CookieJar;
 
 use crate::auth::{AuthManager, UserId};
+use crate::authz::GlobalRole;
 
 #[derive(Clone)]
 pub struct Session {
     pub user_id: UserId,
     pub display_name: String,
+    pub global_role: GlobalRole,
 }
 
 impl Session {
-    pub fn new(user_id: UserId, display_name: String) -> Self {
+    pub fn new(user_id: UserId, display_name: String, global_role: GlobalRole) -> Self {
         Self {
             user_id,
             display_name,
+            global_role,
         }
     }
 }

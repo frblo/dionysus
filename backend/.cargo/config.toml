@@ -1,0 +1,3 @@
+[env]
+TS_RS_EXPORT_DIR = { value = "../frontend/src/lib/api/generated", relative = true }
+SQLX_OFFLINE = "true"
