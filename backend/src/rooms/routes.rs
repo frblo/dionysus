@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
-    authz::{self, Actor, CollectionAction, RoomAction, RoomScope},
+    authz::{self, Actor, AuthzManager, CollectionAction, RoomAction, RoomScope},
     rooms::{self, storage::RoomInfo},
     state::AppState,
 };
@@ -42,51 +42,89 @@ pub enum RoomDelta {
     Resync,
 }
 
+/// `true` if `actor` may view `room_id` right now.
+async fn can_view(authz: &AuthzManager, actor: &Actor, room_id: Uuid) -> bool {
+    match authz.require_room(actor, RoomAction::View, room_id).await {
+        Ok(()) => true,
+        Err(authz::Error::Backend { source }) => {
+            tracing::warn!(
+                error = ?source,
+                %room_id,
+                "authz backend error filtering SSE delta"
+            );
+            false
+        }
+        Err(_) => false,
+    }
+}
+
 async fn sse_handler(
-    AuthSession(_session): AuthSession,
+    AuthSession(session): AuthSession,
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let actor = Actor::from(&session);
     let rx_stream = BroadcastStream::new(state.rooms.gallery_tx.subscribe());
 
-    let stream = rx_stream.filter_map(|res| {
-        let delta = match res {
-            Ok(rd) => rd,
-            Err(BroadcastStreamRecvError::Lagged(n)) => {
-                tracing::warn!(
-                    missed_messages = n,
-                    "SSE recv lagged; requesting room list resync"
-                );
-                RoomDelta::Resync
-            }
-        };
-
-        let event = match delta {
-            RoomDelta::Added(room_info) => {
-                let Some(data) = serde_json::to_string(&room_info)
-                    .map_err(|e| tracing::error!(error = ?e, "failed to serialize room-added"))
-                    .ok()
-                else {
-                    return None;
+    let stream = rx_stream
+        .then(move |res| {
+            let actor = actor.clone();
+            let authz = state.authz.clone();
+            async move {
+                let delta = match res {
+                    Ok(rd) => rd,
+                    Err(BroadcastStreamRecvError::Lagged(n)) => {
+                        tracing::warn!(
+                            missed_messages = n,
+                            "SSE recv lagged; requesting room list resync"
+                        );
+                        RoomDelta::Resync
+                    }
                 };
-                Event::default().event("room-added").data(data)
-            }
-            RoomDelta::Updated(room_info) => {
-                let Some(data) = serde_json::to_string(&room_info)
-                    .map_err(|e| tracing::error!(error = ?e, "failed to serialize room-updated"))
-                    .ok()
-                else {
-                    return None;
-                };
-                Event::default().event("room-updated").data(data)
-            }
-            RoomDelta::Removed(room_id) => Event::default()
-                .event("room-removed")
-                .data(room_id.to_string()),
-            RoomDelta::Resync => Event::default().event("resync"),
-        };
 
-        Some(Ok(event))
-    });
+                let event = match delta {
+                    RoomDelta::Added(room_info) => {
+                        if !can_view(&authz, &actor, room_info.room_id).await {
+                            return None;
+                        }
+
+                        let Some(data) = serde_json::to_string(&room_info)
+                            .map_err(
+                                |e| tracing::error!(error = ?e, "failed to serialize room-added"),
+                            )
+                            .ok()
+                        else {
+                            return None;
+                        };
+                        Event::default().event("room-added").data(data)
+                    }
+                    RoomDelta::Updated(room_info) => {
+                        if !can_view(&authz, &actor, room_info.room_id).await {
+                            return None;
+                        }
+
+                        let Some(data) = serde_json::to_string(&room_info)
+                            .map_err(
+                                |e| tracing::error!(error = ?e, "failed to serialize room-updated"),
+                            )
+                            .ok()
+                        else {
+                            return None;
+                        };
+                        Event::default().event("room-updated").data(data)
+                    }
+                    // Not gated, since:
+                    // a) authz against a room that doesn't exist.
+                    // b) only carries a bare Uuid of a room that doesn't exist.
+                    RoomDelta::Removed(room_id) => Event::default()
+                        .event("room-removed")
+                        .data(room_id.to_string()),
+                    RoomDelta::Resync => Event::default().event("resync"),
+                };
+
+                Some(Ok(event))
+            }
+        })
+        .filter_map(|x| x);
 
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
