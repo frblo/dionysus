@@ -3,7 +3,8 @@ use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use yrs::sync::{DefaultProtocol, Protocol};
+use yrs::Update;
+use yrs::sync::{Awareness, DefaultProtocol, Error as SyncError, Message, Protocol};
 use yrs::updates::encoder::{Encoder, EncoderV1};
 use yrs_axum::{
     broadcast::BroadcastGroup,
@@ -11,6 +12,27 @@ use yrs_axum::{
 };
 
 use crate::rooms::RoomManager;
+
+/// Wraps [`DefaultProtocol`] dropping inbound document mutations
+/// when the connection isn't permitted to edit.
+/// `SyncStep1` and awareness messages pass through unchanged, so a
+/// read-only viewer should still get live view and cursors.
+struct EnforcedProtocol {
+    can_edit: bool,
+}
+
+impl Protocol for EnforcedProtocol {
+    fn handle_sync_step2(
+        &self,
+        awareness: &mut Awareness,
+        update: Update,
+    ) -> Result<Option<Message>, SyncError> {
+        if !self.can_edit {
+            return Ok(None);
+        }
+        DefaultProtocol.handle_sync_step2(awareness, update)
+    }
+}
 
 /// Drives a single client's websocket connection to `room_id` for its whole
 /// lifetime. Sends the server's initial sync message, hands the socket to the
@@ -20,13 +42,14 @@ use crate::rooms::RoomManager;
 /// `request_id` is passed in from `ws_handler` rather than read from a span:
 /// this runs in a task detached from the request by `on_upgrade`, so it can't
 /// inherit the `http_request` span the way the rest of the handler does.
-#[tracing::instrument(skip_all, fields(room_id = %room_id, request_id = %request_id))]
+#[tracing::instrument(skip_all, fields(room_id = %room_id, request_id = %request_id, can_edit = %can_edit))]
 pub async fn peer(
     ws: WebSocket,
     rooms: RoomManager,
     bcast: Arc<BroadcastGroup>,
     room_id: Uuid,
     request_id: String,
+    can_edit: bool,
 ) {
     let (sink, stream) = ws.split();
     let sink = Arc::new(Mutex::new(AxumSink::from(sink)));
@@ -58,7 +81,7 @@ pub async fn peer(
         }
     }
 
-    let sub = bcast.subscribe(sink, stream);
+    let sub = bcast.subscribe_with(sink, stream, EnforcedProtocol { can_edit });
     match sub.completed().await {
         Ok(()) => tracing::info!("websocket connection closed"),
         Err(e) => tracing::warn!(error = %e, "websocket connection closed abnormally"),
