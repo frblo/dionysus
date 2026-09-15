@@ -129,6 +129,19 @@ impl AuthzManager {
         Ok(RoomScope::Only(matching))
     }
 
+    /// `actor`'s role in `room_id`, or [`None`] if they aren't a member.
+    ///
+    /// Their actual role, might not match [`Self::authorize_room`] for
+    /// [`GlobalRole::Admin`].
+    pub async fn role_in_room(&self, room_id: Uuid, actor: &Actor) -> Result<Option<RoomRole>, Error> {
+        self.rooms.role_in_room(room_id, actor).await
+    }
+
+    /// Every room `actor` is a member of, with their role in each.
+    pub async fn member_rooms(&self, actor: &Actor) -> Result<Vec<(Uuid, RoomRole)>, Error> {
+        self.rooms.member_rooms(actor).await
+    }
+
     /// [`authorize_room`](Self::authorize_room), collapsed to a plain
     /// [`Result`] so a handler can `?` it instead of matching on [`Decision`].
     pub async fn require_room(

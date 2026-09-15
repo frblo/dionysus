@@ -8,7 +8,7 @@
   $effect(() => {
     if (galleryState.modalOpen === GalleryModals.Rename) {
       renameName =
-        galleryState.roomList.get(galleryState.targetedId)?.name ?? "";
+        galleryState.roomList.get(galleryState.targetedId)?.room_name ?? "";
     }
   });
 
@@ -28,7 +28,8 @@
   <Modal title="Rename screenplay" closeModal={closeRenameModal}>
     <input
       type="text"
-      placeholder={galleryState.roomList.get(galleryState.targetedId)?.name}
+      placeholder={galleryState.roomList.get(galleryState.targetedId)
+        ?.room_name}
       bind:value={renameName}
       class="w-full px-3 py-2 rounded border border-gray-600 bg-[#1e1e1e] text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:border-gray-400 mb-4"
       onkeydown={(e) => e.key === "Enter" && handleRename()}

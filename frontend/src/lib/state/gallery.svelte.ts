@@ -1,9 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 
-export interface RoomInfo {
-  id: string,
-  name: string,
-}
+import type { RoomInfo } from "$lib/api/generated/RoomInfo";
 
 export enum GalleryModals {
   Remove,
@@ -32,11 +29,8 @@ export async function loadRoomList(
   const json = await response.json();
 
   const data = new SvelteMap<string, RoomInfo>();
-  for (const room of json) {
-    data.set(room.room_id, {
-      id: room.room_id,
-      name: room.room_name,
-    });
+  for (const room of json as RoomInfo[]) {
+    data.set(room.room_id, room);
   }
 
   galleryState.roomList = data;

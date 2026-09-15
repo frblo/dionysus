@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{collections::HashMap, convert::Infallible};
 
 use axum::{
     Json, Router,
@@ -19,8 +19,8 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
-    authz::{self, Actor, AuthzManager, CollectionAction, RoomAction, RoomScope},
-    rooms::{self, storage::RoomInfo},
+    authz::{self, Actor, AuthzManager, CollectionAction, RoomAction, RoomRole, RoomScope},
+    rooms::{self, storage::RoomInfo as StorageRoomInfo},
     state::AppState,
 };
 
@@ -36,26 +36,70 @@ pub fn router() -> Router<AppState> {
 
 #[derive(Debug, Clone)]
 pub enum RoomDelta {
-    Added(RoomInfo),
-    Updated(RoomInfo),
+    Added(StorageRoomInfo),
+    Updated(StorageRoomInfo),
     Removed(Uuid),
     Resync,
 }
 
-/// `true` if `actor` may view `room_id` right now.
-async fn can_view(authz: &AuthzManager, actor: &Actor, room_id: Uuid) -> bool {
-    match authz.require_room(actor, RoomAction::View, room_id).await {
-        Ok(()) => true,
-        Err(authz::Error::Backend { source }) => {
+/// The room shape sent to clients.
+///
+/// Hides some storage fields and includes the callers's own role.
+#[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "RoomInfo.ts"))]
+pub struct RoomInfo {
+    pub room_id: Uuid,
+    pub room_name: String,
+    pub role: Option<RoomRole>,
+}
+
+impl RoomInfo {
+    fn new(info: StorageRoomInfo, role: Option<RoomRole>) -> Self {
+        Self {
+            room_id: info.room_id,
+            room_name: info.room_name,
+            role,
+        }
+    }
+}
+
+/// Per SEE conection calculation of if [`RoomDelta`] update can be seen and
+/// which role this `actor` has.
+async fn viewer_room_info(
+    authz: &AuthzManager,
+    actor: &Actor,
+    info: StorageRoomInfo,
+) -> Option<RoomInfo> {
+    match authz
+        .authorize_room(actor, RoomAction::View, info.room_id)
+        .await
+    {
+        Ok(authz::Decision::Allow) => {}
+        Ok(authz::Decision::Deny) => return None,
+        Err(e) => {
             tracing::warn!(
-                error = ?source,
-                %room_id,
+                error = ?e,
+                room_id = %info.room_id,
                 "authz backend error filtering SSE delta"
             );
-            false
+            return None;
         }
-        Err(_) => false,
     }
+
+    let role = match authz.role_in_room(info.room_id, actor).await {
+        Ok(role) => role,
+        Err(e) => {
+            tracing::warn!(
+                error = ?e,
+                room_id = %info.room_id,
+                "authz backend error resolving SSE role"
+            );
+            None
+        }
+    };
+
+    Some(RoomInfo::new(info, role))
 }
 
 async fn sse_handler(
@@ -82,10 +126,8 @@ async fn sse_handler(
                 };
 
                 let event = match delta {
-                    RoomDelta::Added(room_info) => {
-                        if !can_view(&authz, &actor, room_info.room_id).await {
-                            return None;
-                        }
+                    RoomDelta::Added(info) => {
+                        let room_info = viewer_room_info(&authz, &actor, info).await?;
 
                         let Some(data) = serde_json::to_string(&room_info)
                             .map_err(
@@ -97,10 +139,8 @@ async fn sse_handler(
                         };
                         Event::default().event("room-added").data(data)
                     }
-                    RoomDelta::Updated(room_info) => {
-                        if !can_view(&authz, &actor, room_info.room_id).await {
-                            return None;
-                        }
+                    RoomDelta::Updated(info) => {
+                        let room_info = viewer_room_info(&authz, &actor, info).await?;
 
                         let Some(data) = serde_json::to_string(&room_info)
                             .map_err(
@@ -135,6 +175,12 @@ async fn list_rooms(
 ) -> Result<Json<Vec<RoomInfo>>, rooms::Error> {
     let actor = Actor::from(&session);
     let scope = state.authz.rooms_matching(&actor, RoomAction::View).await?;
+    let membership: HashMap<Uuid, RoomRole> = state
+        .authz
+        .member_rooms(&actor)
+        .await?
+        .into_iter()
+        .collect();
 
     let rooms = state.rooms.list_rooms().await?;
     let rooms = match scope {
@@ -144,6 +190,14 @@ async fn list_rooms(
             .filter(|r| ids.contains(&r.room_id))
             .collect(),
     };
+
+    let rooms = rooms
+        .into_iter()
+        .map(|info| {
+            let role = membership.get(&info.room_id).copied();
+            RoomInfo::new(info, role)
+        })
+        .collect();
 
     Ok(Json(rooms))
 }
@@ -167,8 +221,9 @@ async fn room_info(
         Err(e) => return Err(e.into()),
     }
 
+    let role = state.authz.role_in_room(room_id, &actor).await?;
     match state.rooms.room_info(room_id).await? {
-        Some(info) => Ok(Json(info)),
+        Some(info) => Ok(Json(RoomInfo::new(info, role))),
         None => Err(rooms::Error::NotFound),
     }
 }
