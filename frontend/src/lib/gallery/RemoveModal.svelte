@@ -13,7 +13,7 @@
   async function handleDelete() {
     if (
       deleteConfirmInput !==
-      galleryState.roomList.get(galleryState.targetedId)?.name
+      galleryState.roomList.get(galleryState.targetedId)?.room_name
     )
       return;
     await deleteRoom(galleryState.targetedId);
@@ -27,7 +27,7 @@
       Type
       <br />
       <span class="font-mono text-gray-300"
-        >{galleryState.roomList.get(galleryState.targetedId)?.name}</span
+        >{galleryState.roomList.get(galleryState.targetedId)?.room_name}</span
       >
       <br />
       to confirm deletion.
@@ -49,21 +49,21 @@
       <button
         class="px-3 py-1.5 rounded text-xs transition border"
         class:bg-red-700={deleteConfirmInput ===
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:text-white={deleteConfirmInput ===
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:border-red-600={deleteConfirmInput ===
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:hover:bg-red-600={deleteConfirmInput ===
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:bg-[#3c3c3c]={deleteConfirmInput !==
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:text-gray-500={deleteConfirmInput !==
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         class:border-gray-600={deleteConfirmInput !==
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         disabled={deleteConfirmInput !==
-          galleryState.roomList.get(galleryState.targetedId)?.name}
+          galleryState.roomList.get(galleryState.targetedId)?.room_name}
         onclick={handleDelete}
       >
         Delete
