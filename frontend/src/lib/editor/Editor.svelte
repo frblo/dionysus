@@ -28,6 +28,7 @@
 
   let {
     room = "",
+    readOnly = false,
     user = {
       name: "Anonymous" + Math.floor(Math.random() * 100),
       color: "#30bced",
@@ -86,6 +87,7 @@
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
+          EditorState.readOnly.of(readOnly),
           sceneScanner,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {

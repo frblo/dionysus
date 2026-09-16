@@ -51,6 +51,9 @@
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const roomId = page.data.roomInfo?.room_id;
+  const readOnly =
+    page.data.roomInfo?.role === "viewer" &&
+    sessionState.current?.global_role !== "admin";
 
   const editorWidth = $derived(
     editorViewSettings.panelFocus === PanelFocus.EditorOnly
@@ -156,7 +159,12 @@
       style="width: {editorWidth}"
     >
       <div class="flex-1 overflow-auto">
-        <Editor bind:this={editorRef} room={roomId} user={{ name, color }} />
+        <Editor
+          bind:this={editorRef}
+          room={roomId}
+          {readOnly}
+          user={{ name, color }}
+        />
       </div>
     </section>
 
