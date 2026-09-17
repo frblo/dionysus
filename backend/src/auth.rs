@@ -25,7 +25,7 @@ use crate::config::Config;
 use crate::db::Db;
 use crate::state::AppState;
 
-pub use identity::{IdentityStore, UserId};
+pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
 pub use session_store::SessionStore;
@@ -112,6 +112,20 @@ impl AuthManager {
 
     pub fn provider_ids(&self) -> Vec<String> {
         self.oidc.provider_ids()
+    }
+
+    pub async fn list_users(&self) -> Result<Vec<User>, AuthError> {
+        Ok(self.identity.list_users().await?)
+    }
+
+    pub async fn get_user(&self, id: UserId) -> Result<Option<User>, AuthError> {
+        Ok(self.identity.get_user(id).await?)
+    }
+
+    /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
+    /// in sync.
+    pub async fn update_session_role(&self, user_id: UserId, role: crate::authz::GlobalRole) {
+        self.sessions.update_role_for_user(user_id, role).await;
     }
 
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]

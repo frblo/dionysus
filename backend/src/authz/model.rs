@@ -95,7 +95,7 @@ impl std::str::FromStr for RoomRole {
 /// App-wide role, separate from room membership.
 ///
 /// [`Self::Admin`] >= [`Self::User`] >= [`Self::Guest`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 #[cfg_attr(test, ts(export, export_to = "GlobalRole.ts"))]

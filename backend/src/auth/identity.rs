@@ -26,6 +26,14 @@ impl From<sqlx::Error> for Error {
     }
 }
 
+/// A person's identity.
+#[derive(Debug, Clone, Serialize)]
+pub struct User {
+    pub id: UserId,
+    pub display_name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
 /// Stable id for one person, independent of which OIDC provider they log in with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]
@@ -104,6 +112,39 @@ impl IdentityStore {
         tx.commit().await?;
         Ok((user_id, is_new))
     }
+
+    /// Every known user, oldest first.
+    pub async fn list_users(&self) -> Result<Vec<User>, Error> {
+        let rows = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users ORDER BY created_at"#
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| User {
+                id: r.user_id,
+                display_name: r.display_name,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_user(&self, id: UserId) -> Result<Option<User>, Error> {
+        let row = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users WHERE user_id = $1"#,
+            id.0
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| User {
+            id: r.user_id,
+            display_name: r.display_name,
+            created_at: r.created_at,
+        }))
+    }
 }
 
 #[cfg(test)]
@@ -161,5 +202,34 @@ mod tests {
             .unwrap();
 
         assert_ne!(first, second);
+    }
+
+    #[sqlx::test]
+    async fn list_users_returns_everyone_oldest_first(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (first, _) = store
+            .resolve_or_create("google", "first", "Ada")
+            .await
+            .unwrap();
+        let (second, _) = store
+            .resolve_or_create("google", "second", "Bob")
+            .await
+            .unwrap();
+
+        let users = store.list_users().await.unwrap();
+        assert_eq!(
+            users.iter().map(|u| u.id).collect::<Vec<_>>(),
+            [first, second]
+        );
+    }
+
+    #[sqlx::test]
+    async fn get_user_returns_none_for_unknown_id(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let user = store.get_user(UserId(Uuid::new_v4())).await.unwrap();
+
+        assert!(user.is_none());
     }
 }

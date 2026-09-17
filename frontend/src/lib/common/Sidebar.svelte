@@ -1,6 +1,11 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { ExclamationCircle, QuestionCircle } from "svelte-bootstrap-icons";
+  import {
+    ExclamationCircle,
+    ShieldLock,
+    QuestionCircle,
+  } from "svelte-bootstrap-icons";
+  import { sessionState } from "$lib/state/session.svelte";
 
   let { children }: { children?: Snippet } = $props();
 </script>
@@ -13,6 +18,16 @@
 
   <!-- Bottom buttons -->
   <div class="mt-auto flex flex-col items-center gap-4">
+    {#if sessionState.current?.global_role === "admin"}
+      <a href="/admin">
+        <button
+          class="p-2 text-gray-400 hover:text-white transition-colors"
+          title="Admin"
+        >
+          <ShieldLock />
+        </button>
+      </a>
+    {/if}
     <a href="/help" target="_blank" rel="noreferrer">
       <button
         class="p-2 text-gray-400 hover:text-white transition-colors"
