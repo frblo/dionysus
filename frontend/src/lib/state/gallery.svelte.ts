@@ -6,6 +6,7 @@ export enum GalleryModals {
   Remove,
   Rename,
   Create,
+  Share,
   None,
 }
 
