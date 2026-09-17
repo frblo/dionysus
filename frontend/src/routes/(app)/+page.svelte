@@ -5,6 +5,7 @@
     FileEarmarkPlus,
     FileEarmarkTextFill,
     PencilSquare,
+    PersonPlusFill,
     Trash,
   } from "svelte-bootstrap-icons";
   import { GalleryModals } from "$lib/state/gallery.svelte";
@@ -12,6 +13,7 @@
   import CreateModal from "$lib/gallery/CreateModal.svelte";
   import RemoveModal from "$lib/gallery/RemoveModal.svelte";
   import RenameModal from "$lib/gallery/RenameModal.svelte";
+  import ShareModal from "$lib/gallery/ShareModal.svelte";
   import { galleryState, loadRoomList } from "$lib/state/gallery.svelte";
   import { sessionState } from "$lib/state/session.svelte";
   import type { RoomInfo } from "$lib/api/generated/RoomInfo";
@@ -28,6 +30,11 @@
   function openDeleteModal() {
     galleryState.targetedId = galleryState.hoveredRoomId?.toString() || "";
     galleryState.modalOpen = GalleryModals.Remove;
+  }
+
+  function openShareModal() {
+    galleryState.targetedId = galleryState.hoveredRoomId?.toString() || "";
+    galleryState.modalOpen = GalleryModals.Share;
   }
 
   function stringToColor(str: string): string {
@@ -151,6 +158,18 @@
             >
               <Trash />
             </button>
+            <button
+              class="absolute bottom-2 left-2 p-1.5 rounded bg-gray-600/80 hover:bg-gray-500 text-white text-xs transition-colors z-10"
+              title="Share screenplay"
+              onclick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openShareModal();
+              }}
+              onmouseenter={(e) => e.stopPropagation()}
+            >
+              <PersonPlusFill />
+            </button>
           {/if}
         </a>
       {/each}
@@ -161,3 +180,4 @@
 <CreateModal />
 <RemoveModal />
 <RenameModal />
+<ShareModal />
