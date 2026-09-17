@@ -122,6 +122,10 @@ impl AuthManager {
         Ok(self.identity.get_user(id).await?)
     }
 
+    pub async fn search_users(&self, query: &str) -> Result<Vec<User>, AuthError> {
+        Ok(self.identity.search_by_display_name(query).await?)
+    }
+
     /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
     /// in sync.
     pub async fn update_session_role(&self, user_id: UserId, role: crate::authz::GlobalRole) {

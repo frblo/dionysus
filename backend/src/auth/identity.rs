@@ -131,6 +131,42 @@ impl IdentityStore {
             .collect())
     }
 
+    /// Case-insensitive substring match on `display_name`, capped at 20
+    /// results.
+    ///
+    /// Placeholder user lookup for room sharing, used until a real solution,
+    /// e.g. email search or invite links, is implemented.
+    ///
+    /// Not a longterm solution since display names aren't unique.
+    ///
+    /// Requires 2+ characters in the query so it can't be used as a way to
+    /// browse every user's join date.
+    pub async fn search_by_display_name(&self, query: &str) -> Result<Vec<User>, Error> {
+        if query.trim().chars().count() < 2 {
+            return Ok(Vec::new());
+        }
+
+        let rows = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at
+               FROM users
+               WHERE display_name ILIKE '%' || $1 || '%'
+               ORDER BY display_name
+               LIMIT 20"#,
+            query
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| User {
+                id: r.user_id,
+                display_name: r.display_name,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
     pub async fn get_user(&self, id: UserId) -> Result<Option<User>, Error> {
         let row = sqlx::query!(
             r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users WHERE user_id = $1"#,
@@ -231,5 +267,38 @@ mod tests {
         let user = store.get_user(UserId(Uuid::new_v4())).await.unwrap();
 
         assert!(user.is_none());
+    }
+
+    #[sqlx::test]
+    async fn search_matches_substring_case_insensitively(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        store
+            .resolve_or_create("google", "a", "Ada Lovelace")
+            .await
+            .unwrap();
+        store
+            .resolve_or_create("google", "b", "Bob")
+            .await
+            .unwrap();
+
+        let results = store.search_by_display_name("lovelace").await.unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].display_name, "Ada Lovelace");
+    }
+
+    #[sqlx::test]
+    async fn search_rejects_short_queries(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        store
+            .resolve_or_create("google", "a", "A")
+            .await
+            .unwrap();
+
+        let results = store.search_by_display_name("a").await.unwrap();
+
+        assert!(results.is_empty());
     }
 }
