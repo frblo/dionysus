@@ -32,6 +32,7 @@ pub fn router() -> Router<AppState> {
         .route("/create/{room_name}", post(create))
         .route("/delete/{room_id}", delete(remove))
         .route("/sse", get(sse_handler))
+        .merge(crate::rooms::members::router())
 }
 
 #[derive(Debug, Clone)]

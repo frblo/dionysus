@@ -56,7 +56,7 @@ pub enum RoomScope {
 /// A role within one room.
 ///
 /// [`Self::Owner`] >= [`Self::Editor`] >= [`Self::Viewer`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 #[cfg_attr(test, ts(export, export_to = "RoomRole.ts"))]
@@ -143,6 +143,8 @@ impl std::str::FromStr for GlobalRole {
 
 /// A member in a room.
 #[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "RoomMember.ts"))]
 pub struct RoomMember {
     pub user_id: UserId,
     pub display_name: String,

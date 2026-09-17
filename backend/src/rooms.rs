@@ -1,5 +1,6 @@
 pub mod error;
 pub mod manager;
+pub mod members;
 mod repo;
 pub mod routes;
 pub mod storage;
