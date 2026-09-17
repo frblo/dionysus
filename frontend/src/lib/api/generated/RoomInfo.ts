@@ -2,7 +2,8 @@
 import type { RoomRole } from "./RoomRole";
 
 /**
- * The room-list shape sent to clients: storage fields plus the caller's
- * own role, computed per-request since it depends on who's asking.
+ * The room shape sent to clients.
+ *
+ * Hides some storage fields and includes the callers's own role.
  */
 export type RoomInfo = { room_id: string, room_name: string, role: RoomRole | null, };

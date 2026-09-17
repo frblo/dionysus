@@ -80,6 +80,16 @@ impl AuthzManager {
         self.roles.global_role(actor).await
     }
 
+    /// Whether global roles can be changed from within Dionysus, i.e.
+    /// whether a [`RoleStore`] is configured.
+    ///
+    /// `false` means an external source is authoritative for roles, and
+    /// [`set_global_role`](Self::set_global_role) will return
+    /// [`Error::Unsupported`].
+    pub fn role_management_enabled(&self) -> bool {
+        self.role_store.is_some()
+    }
+
     pub async fn authorize_room(
         &self,
         actor: &Actor,
@@ -133,7 +143,11 @@ impl AuthzManager {
     ///
     /// Their actual role, might not match [`Self::authorize_room`] for
     /// [`GlobalRole::Admin`].
-    pub async fn role_in_room(&self, room_id: Uuid, actor: &Actor) -> Result<Option<RoomRole>, Error> {
+    pub async fn role_in_room(
+        &self,
+        room_id: Uuid,
+        actor: &Actor,
+    ) -> Result<Option<RoomRole>, Error> {
         self.rooms.role_in_room(room_id, actor).await
     }
 

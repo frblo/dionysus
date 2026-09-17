@@ -1,3 +1,4 @@
+mod admin;
 mod app;
 mod auth;
 mod authz;
