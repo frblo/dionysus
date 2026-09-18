@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthError, AuthSession, UserId},
     authz::{self, Actor, RoomAction, RoomMember, RoomRole},
+    rooms::{self, routes::RoomDelta},
     state::AppState,
 };
 
@@ -25,6 +26,12 @@ pub enum Error {
     #[error("user not found")]
     UserNotFound,
 
+    #[error("room not found")]
+    RoomNotFound,
+
+    #[error(transparent)]
+    Room(#[from] rooms::Error),
+
     #[error(transparent)]
     Authz(#[from] authz::Error),
 
@@ -39,6 +46,11 @@ impl IntoResponse for Error {
                 tracing::warn!("member error: user not found");
                 StatusCode::NOT_FOUND.into_response()
             }
+            Error::RoomNotFound => {
+                tracing::error!("member error: couldn't find room just modified");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            Error::Room(e) => e.into_response(),
             Error::Authz(e) => e.into_response(),
             Error::Auth(e) => e.into_response(),
         }
@@ -87,7 +99,17 @@ async fn add_member(
         display_name: target.display_name,
     };
 
-    state.authz.grant_role(room_id, &subject, payload.role).await?;
+    state
+        .authz
+        .grant_role(room_id, &subject, payload.role)
+        .await?;
+
+    let info = state
+        .rooms
+        .room_info(room_id)
+        .await?
+        .ok_or(Error::RoomNotFound)?;
+    let _ = state.rooms.gallery_tx.send(RoomDelta::Updated(info));
     Ok(())
 }
 
@@ -113,6 +135,13 @@ async fn remove_member(
     };
 
     state.authz.revoke_role(room_id, &subject).await?;
+
+    let info = state
+        .rooms
+        .room_info(room_id)
+        .await?
+        .ok_or(Error::RoomNotFound)?;
+    let _ = state.rooms.gallery_tx.send(RoomDelta::Updated(info));
     Ok(())
 }
 
