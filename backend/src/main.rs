@@ -1,5 +1,7 @@
+mod admin;
 mod app;
 mod auth;
+mod authz;
 mod config;
 mod db;
 mod logging;
@@ -34,9 +36,10 @@ async fn main() -> anyhow::Result<()> {
         .expect("Failed to apply database migrations");
     tracing::info!("database migrations applied");
 
-    let auth = AuthManager::new(&config).await?;
+    let db = Db::new(pool);
+    let auth = AuthManager::new(&config, db.clone()).await?;
 
-    let state = state::AppState::new(Db::new(pool), auth).await;
+    let state = state::AppState::new(db, auth).await;
 
     let app = app::router(state);
     tracing::info!("application initialized");

@@ -25,6 +25,7 @@
     PanelFocus,
   } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
+  import { sessionState } from "$lib/state/session.svelte";
   import Header from "$lib/common/Header.svelte";
   import Sidebar from "$lib/common/Sidebar.svelte";
 
@@ -49,10 +50,13 @@
 
   let editorRef = $state(<Editor | null>null);
 
-  const name = page.data.me?.display_name;
+  const name = sessionState.current?.user.display_name;
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const roomId = page.data.roomInfo?.room_id;
+  const readOnly =
+    page.data.roomInfo?.role === "viewer" &&
+    sessionState.current?.global_role !== "admin";
 
   const editorWidth = $derived(
     editorViewSettings.panelFocus === PanelFocus.EditorOnly
@@ -190,7 +194,12 @@
       style="width: {editorWidth}"
     >
       <div class="flex-1 overflow-auto">
-        <Editor bind:this={editorRef} room={roomId} user={{ name, color }} />
+        <Editor
+          bind:this={editorRef}
+          room={roomId}
+          {readOnly}
+          user={{ name, color }}
+        />
       </div>
     </section>
 

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO room_members (room_id, user_id, role)\n            VALUES ($1, $2, 'owner')\n            ON CONFLICT (room_id, user_id) DO UPDATE SET role = 'owner'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9b6bf85edbc3598bba5479302ba422f2cd6c1e9f26144b9f9b41c0e4404a7da8"
+}

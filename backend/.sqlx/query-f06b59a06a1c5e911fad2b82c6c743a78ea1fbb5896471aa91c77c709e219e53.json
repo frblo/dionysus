@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO user_roles (user_id, global_role)\n            VALUES ($1, CASE WHEN EXISTS (SELECT 1 FROM user_roles) THEN 'guest' ELSE 'admin' END)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f06b59a06a1c5e911fad2b82c6c743a78ea1fbb5896471aa91c77c709e219e53"
+}

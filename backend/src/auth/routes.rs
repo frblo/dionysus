@@ -5,7 +5,8 @@ use axum_extra::extract::{CookieJar, cookie::Cookie};
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::auth::AuthError;
+use crate::auth::{AuthError, UserId};
+use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
 #[derive(Serialize)]
@@ -19,15 +20,28 @@ pub async fn providers(State(state): State<AppState>) -> Json<ProviderList> {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "Me.ts"))]
 pub struct Me {
-    user_id: String,
+    user: MeUser,
+    global_role: GlobalRole,
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "Me.ts"))]
+pub struct MeUser {
+    id: UserId,
     display_name: String,
 }
 
 pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
     Json(Me {
-        user_id: session.user_id,
-        display_name: session.display_name,
+        user: MeUser {
+            id: session.user_id,
+            display_name: session.display_name,
+        },
+        global_role: session.global_role,
     })
 }
 
@@ -56,7 +70,10 @@ pub async fn oidc_callback(
     Query(q): Query<CallbackQuery>,
     jar: CookieJar,
 ) -> Result<impl IntoResponse, AuthError> {
-    let session_id = state.auth.finish_login(&provider, q.code, q.state).await?;
+    let session_id = state
+        .auth
+        .finish_login(&provider, q.code, q.state, &state.authz)
+        .await?;
 
     let cookie = Cookie::build(("session", session_id))
         .path("/")

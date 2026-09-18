@@ -1,3 +1,4 @@
+mod identity;
 mod oidc;
 mod routes;
 mod session;
@@ -19,9 +20,12 @@ use serde::Serialize;
 use thiserror::Error;
 
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
+use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
+use crate::db::Db;
 use crate::state::AppState;
 
+pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
 pub use session_store::SessionStore;
@@ -43,8 +47,14 @@ pub enum AuthError {
     #[error("id token verification failed")]
     IdTokenVerification,
 
-    #[error("error initilizing auth: {source}")]
-    Initilization {
+    #[error("identity resolution failed: {0}")]
+    Identity(#[from] identity::Error),
+
+    #[error("authorization backend error: {0}")]
+    Authz(#[from] crate::authz::Error),
+
+    #[error("error initializing auth: {source}")]
+    Initialization {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
@@ -55,14 +65,15 @@ pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
     pending: PendingLoginStore,
     sessions: SessionStore,
+    identity: IdentityStore,
     external_base_url: String,
 }
 
 impl AuthManager {
-    pub async fn new(cfg: &Config) -> Result<Self, AuthError> {
+    pub async fn new(cfg: &Config, db: Db) -> Result<Self, AuthError> {
         let oidc = OidcRegistry::new(&cfg.oidc)
             .await
-            .map_err(|e| AuthError::Initilization {
+            .map_err(|e| AuthError::Initialization {
                 source: Box::new(e),
             })?;
 
@@ -70,12 +81,23 @@ impl AuthManager {
 
         let sessions = SessionStore::new();
 
-        Ok(Self {
+        let manager = Self {
             oidc: Arc::new(oidc),
-            pending,
+            pending: pending.clone(),
             sessions,
+            identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
-        })
+        };
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_mins(1));
+            loop {
+                interval.tick().await;
+                pending.gc().await;
+            }
+        });
+
+        Ok(manager)
     }
 
     pub async fn get_session(&self, session_id: &str) -> Option<Session> {
@@ -90,6 +112,24 @@ impl AuthManager {
 
     pub fn provider_ids(&self) -> Vec<String> {
         self.oidc.provider_ids()
+    }
+
+    pub async fn list_users(&self) -> Result<Vec<User>, AuthError> {
+        Ok(self.identity.list_users().await?)
+    }
+
+    pub async fn get_user(&self, id: UserId) -> Result<Option<User>, AuthError> {
+        Ok(self.identity.get_user(id).await?)
+    }
+
+    pub async fn search_users(&self, query: &str) -> Result<Vec<User>, AuthError> {
+        Ok(self.identity.search_by_display_name(query).await?)
+    }
+
+    /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
+    /// in sync.
+    pub async fn update_session_role(&self, user_id: UserId, role: crate::authz::GlobalRole) {
+        self.sessions.update_role_for_user(user_id, role).await;
     }
 
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
@@ -138,12 +178,17 @@ impl AuthManager {
     }
 
     /// The [`String`] returned is the session id for the completed login.
+    ///
+    /// Resolves identity, runs `authz`'s new-user bootstrap when this login
+    /// created the account, and resolves the [`GlobalRole`](crate::authz::GlobalRole)
+    /// to stash on the [`Session`].
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn finish_login(
         &self,
         provider_id: &str,
         code: String,
         state: String,
+        authz: &AuthzManager,
     ) -> Result<String, AuthError> {
         let pl = self
             .pending
@@ -180,7 +225,7 @@ impl AuthManager {
             .claims(&client.id_token_verifier(), &pl.nonce)
             .map_err(|_| AuthError::IdTokenVerification)?;
 
-        let user_id = format!("{}|{}", provider_id, claims.subject().as_str());
+        let subject = claims.subject().as_str();
         let display_name = claims
             .preferred_username()
             .map(|s| s.to_string())
@@ -189,13 +234,27 @@ impl AuthManager {
                 .name()
                 .and_then(|s| s.get(None))
                 .map(|s| s.to_string()))
-            .unwrap_or_else(|| user_id.clone());
+            .unwrap_or_else(|| subject.to_string());
+
+        let (user_id, is_new) = self
+            .identity
+            .resolve_or_create(provider_id, subject, &display_name)
+            .await?;
+
+        let actor = Actor {
+            id: user_id,
+            display_name: display_name.clone(),
+        };
+        if is_new {
+            authz.on_user_created(&actor).await?;
+        }
+        let global_role = authz.global_role(&actor).await?;
 
         let session_id = rand_str(64);
         self.sessions
             .insert(
                 session_id.clone(),
-                Session::new(user_id.clone(), display_name),
+                Session::new(user_id, display_name, global_role),
             )
             .await;
 
@@ -243,7 +302,9 @@ impl IntoResponse for AuthError {
             AuthError::IdTokenVerification => {
                 (StatusCode::UNAUTHORIZED, "id_token_verification_failed")
             }
-            AuthError::Initilization { source: _ } => {
+            AuthError::Identity(_) => (StatusCode::INTERNAL_SERVER_ERROR, "identity_backend_error"),
+            AuthError::Authz(_) => (StatusCode::INTERNAL_SERVER_ERROR, "authz_backend_error"),
+            AuthError::Initialization { source: _ } => {
                 unreachable!("Should never call this from an Axum thing")
             }
         };
