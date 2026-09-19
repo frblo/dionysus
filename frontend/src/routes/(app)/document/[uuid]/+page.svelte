@@ -109,6 +109,15 @@
         <TypeUnderline />
       </button>
 
+      <button
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+        onclick={() => editorRef?.toggleBoneyard()}
+        title="Comment / uncomment (Ctrl or ⌘ + /)"
+        aria-label="Comment or uncomment selected text"
+      >
+        /* */
+      </button>
+
       <div class="w-px h-5 bg-gray-600"></div>
 
       <button
