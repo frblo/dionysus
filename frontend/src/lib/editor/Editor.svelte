@@ -104,6 +104,13 @@
                 return true;
               },
             },
+            {
+              key: "Mod-/",
+              run: () => {
+                toggleBoneyard();
+                return true;
+              },
+            },
           ]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: "true" }),
@@ -171,6 +178,39 @@
 
   export function redo() {
     undoManager?.redo();
+  }
+
+  export function toggleBoneyard() {
+    if (!view) return;
+
+    const { from, to } = view.state.selection.main;
+    if (from === to) {
+      view.dispatch({
+        changes: { from, insert: "/*  */" },
+        selection: { anchor: from + 3 },
+      });
+    } else {
+      const selected = view.state.sliceDoc(from, to);
+      const wrapped = selected.startsWith("/* ") && selected.endsWith(" */");
+      const markerLength = 3;
+
+      view.dispatch({
+        changes: wrapped
+          ? [
+              { from, to: from + markerLength, insert: "" },
+              { from: to - markerLength, to, insert: "" },
+            ]
+          : [
+              { from, insert: "/* " },
+              { from: to, insert: " */" },
+            ],
+        selection: wrapped
+          ? { anchor: from, head: to - markerLength * 2 }
+          : { anchor: from + markerLength, head: to + markerLength },
+      });
+    }
+
+    view.focus();
   }
 
   export function surroundSelection(prefix: string, suffix: string) {
