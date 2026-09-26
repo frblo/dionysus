@@ -50,7 +50,7 @@
 
     provider.awareness.setLocalStateField("user", user);
 
-    const vimExt = createVim(undoManager);
+    const vimExt = createVim(undoManager, () => surroundSelection("/*", "*/"));
     const trailingSpaces = createTrailingSpaces();
     const debouncedPreview = debounce(async (text: string, line: number) => {
       preview.generatePreview(text);
@@ -102,6 +102,13 @@
               key: "Mod-b",
               run: () => {
                 surroundSelection("**", "**");
+                return true;
+              },
+            },
+            {
+              key: "Mod-Shift-7",
+              run: () => {
+                surroundSelection("/*", "*/");
                 return true;
               },
             },
