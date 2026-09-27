@@ -6,6 +6,9 @@ pub enum Error {
     #[error("room not found")]
     NotFound,
 
+    #[error("forbidden")]
+    Forbidden,
+
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
 

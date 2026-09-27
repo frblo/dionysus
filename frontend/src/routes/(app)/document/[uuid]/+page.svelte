@@ -25,6 +25,7 @@
     PanelFocus,
   } from "$lib/state/settings.svelte";
   import { preview } from "$lib/state/preview.svelte";
+  import { sessionState } from "$lib/state/session.svelte";
   import Header from "$lib/common/Header.svelte";
   import Sidebar from "$lib/common/Sidebar.svelte";
 
@@ -49,10 +50,13 @@
 
   let editorRef = $state(<Editor | null>null);
 
-  const name = page.data.me?.display_name;
+  const name = sessionState.current?.user.display_name;
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const roomId = page.data.roomInfo?.room_id;
+  const readOnly =
+    page.data.roomInfo?.role === "viewer" &&
+    sessionState.current?.global_role !== "admin";
 
   const editorWidth = $derived(
     editorViewSettings.panelFocus === PanelFocus.EditorOnly
@@ -84,48 +88,52 @@
 
 <Header title={page.data.roomInfo?.room_name}>
   {#snippet leftChildren()}
-    {#if editorViewSettings.panelFocus !== PanelFocus.PreviewOnly}
-      <button
-        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-        onclick={() => editorRef?.surroundSelection("*", "*")}
-        title="Italic"
-      >
-        <TypeItalic />
-      </button>
+    {#if readOnly}
+      <p class="text-sm font-medium text-gray-400 truncate" >READ ONLY</p>
+    {:else}
+      {#if editorViewSettings.panelFocus !== PanelFocus.PreviewOnly}
+        <button
+          class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+          onclick={() => editorRef?.surroundSelection("*", "*")}
+          title="Italic"
+        >
+          <TypeItalic />
+        </button>
 
-      <button
-        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-        onclick={() => editorRef?.surroundSelection("**", "**")}
-        title="Bold"
-      >
-        <TypeBold />
-      </button>
+        <button
+          class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+          onclick={() => editorRef?.surroundSelection("**", "**")}
+          title="Bold"
+        >
+          <TypeBold />
+        </button>
 
-      <button
-        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-        onclick={() => editorRef?.surroundSelection("_", "_")}
-        title="Underline"
-      >
-        <TypeUnderline />
-      </button>
+        <button
+          class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+          onclick={() => editorRef?.surroundSelection("_", "_")}
+          title="Underline"
+        >
+          <TypeUnderline />
+        </button>
 
-      <div class="w-px h-5 bg-gray-600"></div>
+        <div class="w-px h-5 bg-gray-600"></div>
 
-      <button
-        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-        onclick={() => editorRef?.undo()}
-        title="Undo"
-      >
-        <ArrowCounterclockwise />
-      </button>
+        <button
+          class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+          onclick={() => editorRef?.undo()}
+          title="Undo"
+        >
+          <ArrowCounterclockwise />
+        </button>
 
-      <button
-        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-        onclick={() => editorRef?.redo()}
-        title="Redo"
-      >
-        <ArrowClockwise />
-      </button>
+        <button
+          class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
+          onclick={() => editorRef?.redo()}
+          title="Redo"
+        >
+          <ArrowClockwise />
+        </button>
+      {/if}
     {/if}
   {/snippet}
 
@@ -190,7 +198,12 @@
       style="width: {editorWidth}"
     >
       <div class="flex-1 overflow-auto">
-        <Editor bind:this={editorRef} room={roomId} user={{ name, color }} />
+        <Editor
+          bind:this={editorRef}
+          room={roomId}
+          {readOnly}
+          user={{ name, color }}
+        />
       </div>
     </section>
 

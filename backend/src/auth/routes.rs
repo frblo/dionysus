@@ -1,11 +1,18 @@
+use std::convert::Infallible;
+
 use axum::extract::{Path, Query};
-use axum::response::{IntoResponse, Redirect};
+use axum::response::sse::{Event, KeepAlive};
+use axum::response::{IntoResponse, Redirect, Sse};
 use axum::{Json, extract::State};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
+use futures_util::Stream;
 use serde::Deserialize;
 use serde::Serialize;
+use tokio_stream::StreamExt;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::AuthError;
+use crate::auth::{AuthError, SessionDelta, UserId};
+use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
 #[derive(Serialize)]
@@ -19,16 +26,54 @@ pub async fn providers(State(state): State<AppState>) -> Json<ProviderList> {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "Me.ts"))]
 pub struct Me {
-    user_id: String,
+    user: MeUser,
+    global_role: GlobalRole,
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "Me.ts"))]
+pub struct MeUser {
+    id: UserId,
     display_name: String,
 }
 
 pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
     Json(Me {
-        user_id: session.user_id,
-        display_name: session.display_name,
+        user: MeUser {
+            id: session.user_id,
+            display_name: session.display_name,
+        },
+        global_role: session.global_role,
     })
+}
+
+/// Informs the user when something has changed with their session.
+pub async fn sse(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let my_user_id = session.user_id;
+    let rx_stream = BroadcastStream::new(state.auth.subscribe_sessions());
+
+    let stream = rx_stream.filter_map(move |res| {
+        let event = match res {
+            Ok(SessionDelta::RoleChanged { user_id, .. }) if user_id == my_user_id => {
+                Event::default().event("role-changed").data("role-changed")
+            }
+            Ok(_) => return None,
+            Err(BroadcastStreamRecvError::Lagged(n)) => {
+                tracing::warn!(missed_messages = n, "SSE recv lagged; requesting resync");
+                Event::default().event("resync").data("resync")
+            }
+        };
+        Some(Ok(event))
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 #[derive(Deserialize)]
@@ -56,7 +101,10 @@ pub async fn oidc_callback(
     Query(q): Query<CallbackQuery>,
     jar: CookieJar,
 ) -> Result<impl IntoResponse, AuthError> {
-    let session_id = state.auth.finish_login(&provider, q.code, q.state).await?;
+    let session_id = state
+        .auth
+        .finish_login(&provider, q.code, q.state, &state.authz)
+        .await?;
 
     let cookie = Cookie::build(("session", session_id))
         .path("/")
