@@ -28,7 +28,7 @@ use crate::state::AppState;
 pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
-pub use session_store::SessionStore;
+pub use session_store::{SessionDelta, SessionStore};
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -102,6 +102,10 @@ impl AuthManager {
 
     pub async fn get_session(&self, session_id: &str) -> Option<Session> {
         self.sessions.get(session_id).await
+    }
+
+    pub fn subscribe_sessions(&self) -> tokio::sync::broadcast::Receiver<SessionDelta> {
+        self.sessions.subscribe()
     }
 
     #[tracing::instrument(skip_all)]
@@ -280,6 +284,7 @@ fn rand_str(n: usize) -> String {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/me", get(routes::me))
+        .route("/sse", get(routes::sse))
         .route("/providers", get(routes::providers))
         .route("/login", get(routes::login))
         .route("/callback/{provider}", get(routes::oidc_callback))

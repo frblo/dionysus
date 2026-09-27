@@ -159,7 +159,7 @@ async fn sse_handler(
                     RoomDelta::Removed(room_id) => Event::default()
                         .event("room-removed")
                         .data(room_id.to_string()),
-                    RoomDelta::Resync => Event::default().event("resync"),
+                    RoomDelta::Resync => Event::default().event("resync").data("resync"),
                 };
 
                 Some(Ok(event))

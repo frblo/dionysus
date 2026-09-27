@@ -1,9 +1,14 @@
 use std::{collections::HashMap, sync::Arc};
 
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 
 use crate::auth::{Session, UserId};
 use crate::authz::GlobalRole;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SessionDelta {
+    RoleChanged { user_id: UserId, role: GlobalRole },
+}
 
 /// Stores current user sessions
 ///
@@ -11,13 +16,20 @@ use crate::authz::GlobalRole;
 #[derive(Clone)]
 pub struct SessionStore {
     store: Arc<RwLock<HashMap<String, Session>>>,
+    tx: broadcast::Sender<SessionDelta>,
 }
 
 impl SessionStore {
     pub fn new() -> Self {
+        let (tx, _) = broadcast::channel(16);
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
+            tx,
         }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<SessionDelta> {
+        self.tx.subscribe()
     }
 
     pub async fn get(&self, session_id: &str) -> Option<Session> {
@@ -38,11 +50,14 @@ impl SessionStore {
     /// This ensures that someone whose role is updated doesn't need to log out
     /// and back in to see their updated permission in the frontend.
     pub async fn update_role_for_user(&self, user_id: UserId, role: GlobalRole) {
-        let mut store = self.store.write().await;
-        for session in store.values_mut() {
-            if session.user_id == user_id {
-                session.global_role = role;
+        {
+            let mut store = self.store.write().await;
+            for session in store.values_mut() {
+                if session.user_id == user_id {
+                    session.global_role = role;
+                }
             }
         }
+        let _ = self.tx.send(SessionDelta::RoleChanged { user_id, role });
     }
 }

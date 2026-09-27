@@ -1,11 +1,17 @@
+use std::convert::Infallible;
+
 use axum::extract::{Path, Query};
-use axum::response::{IntoResponse, Redirect};
+use axum::response::sse::{Event, KeepAlive};
+use axum::response::{IntoResponse, Redirect, Sse};
 use axum::{Json, extract::State};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
+use futures_util::Stream;
 use serde::Deserialize;
 use serde::Serialize;
+use tokio_stream::StreamExt;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::{AuthError, UserId};
+use crate::auth::{AuthError, SessionDelta, UserId};
 use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
@@ -43,6 +49,31 @@ pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
         },
         global_role: session.global_role,
     })
+}
+
+/// Informs the user when something has changed with their session.
+pub async fn sse(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let my_user_id = session.user_id;
+    let rx_stream = BroadcastStream::new(state.auth.subscribe_sessions());
+
+    let stream = rx_stream.filter_map(move |res| {
+        let event = match res {
+            Ok(SessionDelta::RoleChanged { user_id, .. }) if user_id == my_user_id => {
+                Event::default().event("role-changed").data("role-changed")
+            }
+            Ok(_) => return None,
+            Err(BroadcastStreamRecvError::Lagged(n)) => {
+                tracing::warn!(missed_messages = n, "SSE recv lagged; requesting resync");
+                Event::default().event("resync").data("resync")
+            }
+        };
+        Some(Ok(event))
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 #[derive(Deserialize)]
