@@ -20,7 +20,8 @@ DATABASE_URL=postgres://dionysus:dionysus@localhost:5432/dionysus
 
 `SQLX_OFFLINE=true` is specified in `.cargo/config.toml`. This means that `cargo build` / `cargo check` / `rust-analyzer` will read the committed `.sqlx/` cache instead of connecting to Postgres. 
 
-**Note**: `cargo test` still needs Postgres at runtime for `#[sqlx::test]`, if the database is unreachable, each case hangs ~30s before failing with `PoolTimedOut`.
+> [!NOTE]
+> `cargo test` still needs Postgres at runtime for `#[sqlx::test]`, if the database is unreachable, each case hangs ~30s before failing with `PoolTimedOut`.
 
 With the server up and running and variables set run:
 ```sh
