@@ -1,10 +1,21 @@
-export const userSettings = $state({
-  vimEnabled: true,
-  highlighTrailingSpacesEnabled: true,
-});
+import { LocalStorage } from "$lib/utils/storage.svelte";
+
+type UserSettings = {
+  vimEnabled: boolean;
+  highlighTrailingSpacesEnabled: boolean;
+};
+
+export const userSettings = new LocalStorage<UserSettings>(
+  "dionysus:userSettings",
+  {
+    vimEnabled: true,
+    highlighTrailingSpacesEnabled: true,
+  },
+);
 
 export enum SidebarMenus {
   Outline,
+  Settings,
   None,
 }
 
@@ -19,4 +30,3 @@ export const editorViewSettings = $state({
   exportMenuOpen: false,
   panelFocus: PanelFocus.Both,
 });
-
