@@ -72,6 +72,14 @@ impl IdentityStore {
     ) -> Result<(UserId, bool), Error> {
         let mut tx = self.db.pool().begin().await?;
 
+        sqlx::query!(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1 || ':' || $2, 0))",
+            provider_id,
+            subject,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let existing = sqlx::query!(
             r#"SELECT user_id AS "user_id!: UserId" FROM user_identities WHERE provider_id = $1 AND subject = $2"#,
             provider_id,
@@ -277,10 +285,7 @@ mod tests {
             .resolve_or_create("google", "a", "Ada Lovelace")
             .await
             .unwrap();
-        store
-            .resolve_or_create("google", "b", "Bob")
-            .await
-            .unwrap();
+        store.resolve_or_create("google", "b", "Bob").await.unwrap();
 
         let results = store.search_by_display_name("lovelace").await.unwrap();
 
@@ -292,10 +297,7 @@ mod tests {
     async fn search_rejects_short_queries(pool: sqlx::PgPool) {
         let store = IdentityStore::new(Db::new(pool));
 
-        store
-            .resolve_or_create("google", "a", "A")
-            .await
-            .unwrap();
+        store.resolve_or_create("google", "a", "A").await.unwrap();
 
         let results = store.search_by_display_name("a").await.unwrap();
 
