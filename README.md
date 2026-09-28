@@ -14,6 +14,18 @@ This starts the application, a local `PostgreSQL` instance, and a mock OIDC prov
 
 For production deployments, use the published Docker image and configure it as described in the [Configuration](#configuration) section. Mount a configuration file to `/etc/dionysus/config.toml` or set `DIONYSUS_` environment variables as needed.
 
+## Development
+
+### Local test users
+
+The mock OIDC provider's login form only creates a bare subject. To tests flows which need more information (verified email, name, etc.) you can seed users before running:
+
+```sh
+./scripts/seed_dev_user.py alice@example.com
+```
+
+Then log in with that subject. See `--help` for more details on how to use the script.
+
 ## Configuration
 
 ### General
