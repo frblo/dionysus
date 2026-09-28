@@ -1,4 +1,5 @@
 mod identity;
+mod linking;
 mod oidc;
 mod routes;
 mod session;
@@ -20,6 +21,7 @@ use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::auth::linking::PendingLinkStore;
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
 use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
@@ -65,6 +67,7 @@ pub enum AuthError {
 pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
     pending: PendingLoginStore,
+    links: PendingLinkStore,
     sessions: SessionStore,
     identity: IdentityStore,
     external_base_url: String,
@@ -79,12 +82,14 @@ impl AuthManager {
             })?;
 
         let pending = PendingLoginStore::new(Duration::from_mins(1));
+        let links = PendingLinkStore::new(Duration::from_mins(5));
 
         let sessions = SessionStore::new();
 
         let manager = Self {
             oidc: Arc::new(oidc),
             pending: pending.clone(),
+            links: links.clone(),
             sessions,
             identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
@@ -95,6 +100,7 @@ impl AuthManager {
             loop {
                 interval.tick().await;
                 pending.gc().await;
+                links.gc().await;
             }
         });
 
