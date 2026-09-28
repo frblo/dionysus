@@ -28,6 +28,7 @@ impl From<sqlx::Error> for Error {
 pub struct User {
     pub id: UserId,
     pub display_name: String,
+    pub email: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -139,7 +140,7 @@ impl IdentityStore {
     /// Every known user, oldest first.
     pub async fn list_users(&self) -> Result<Vec<User>, Error> {
         let rows = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users ORDER BY created_at"#
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at FROM users ORDER BY created_at"#
         )
         .fetch_all(self.db.pool())
         .await?;
@@ -149,6 +150,7 @@ impl IdentityStore {
             .map(|r| User {
                 id: r.user_id,
                 display_name: r.display_name,
+                email: r.email,
                 created_at: r.created_at,
             })
             .collect())
@@ -170,7 +172,7 @@ impl IdentityStore {
         }
 
         let rows = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at
                FROM users
                WHERE display_name ILIKE '%' || $1 || '%'
                ORDER BY display_name
@@ -185,6 +187,7 @@ impl IdentityStore {
             .map(|r| User {
                 id: r.user_id,
                 display_name: r.display_name,
+                email: r.email,
                 created_at: r.created_at,
             })
             .collect())
@@ -192,7 +195,7 @@ impl IdentityStore {
 
     pub async fn get_user(&self, id: UserId) -> Result<Option<User>, Error> {
         let row = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users WHERE user_id = $1"#,
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at FROM users WHERE user_id = $1"#,
             id.0
         )
         .fetch_optional(self.db.pool())
@@ -201,8 +204,25 @@ impl IdentityStore {
         Ok(row.map(|r| User {
             id: r.user_id,
             display_name: r.display_name,
+            email: r.email,
             created_at: r.created_at,
         }))
+    }
+
+    pub async fn update_display_name(
+        &self,
+        user_id: UserId,
+        display_name: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            "UPDATE users SET display_name = $2, updated_at = now() WHERE user_id = $1",
+            user_id.0,
+            display_name,
+        )
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
     }
 
     /// Find the user, if any, with the given `(provider_id, subject)` identity.
@@ -394,6 +414,20 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(email.as_deref(), Some("ada@example.com"));
+    }
+
+    #[sqlx::test]
+    async fn update_display_name_changes_it(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.update_display_name(id, "Ada Lovelace").await.unwrap();
+
+        let name = store.get_user(id).await.unwrap().unwrap().display_name;
+        assert_eq!(name, "Ada Lovelace");
     }
 
     #[sqlx::test]

@@ -47,6 +47,12 @@ pub enum AuthError {
     #[error("could not confirm account link")]
     LinkMismatch,
 
+    #[error("display name must not be empty")]
+    InvalidDisplayName,
+
+    #[error("user not found")]
+    UserNotFound,
+
     #[error("token exchange failed")]
     TokenExchange,
 
@@ -91,6 +97,17 @@ pub enum LoginOutcome {
 pub struct PendingLinkInfo {
     pub target_providers: Vec<String>,
     pub masked_email: String,
+}
+
+/// A user's own profile.
+/// Their display name, email, and which providers they can log in with.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "Profile.ts"))]
+pub struct Profile {
+    pub display_name: String,
+    pub email: Option<String>,
+    pub providers: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -165,6 +182,40 @@ impl AuthManager {
 
     pub async fn search_users(&self, query: &str) -> Result<Vec<User>, AuthError> {
         Ok(self.identity.search_by_display_name(query).await?)
+    }
+
+    pub async fn profile(&self, user_id: UserId) -> Result<Profile, AuthError> {
+        let user = self
+            .identity
+            .get_user(user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        let providers = self.identity.provider_ids_for_user(user_id).await?;
+
+        Ok(Profile {
+            display_name: user.display_name,
+            email: user.email,
+            providers,
+        })
+    }
+
+    pub async fn update_display_name(
+        &self,
+        user_id: UserId,
+        display_name: &str,
+    ) -> Result<(), AuthError> {
+        if display_name.trim().is_empty() {
+            return Err(AuthError::InvalidDisplayName);
+        }
+
+        let display_name = display_name.trim();
+        self.identity
+            .update_display_name(user_id, display_name)
+            .await?;
+        self.sessions
+            .update_display_name_for_user(user_id, display_name)
+            .await;
+        Ok(())
     }
 
     /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
@@ -477,6 +528,10 @@ pub fn router() -> Router<AppState> {
         .route("/login", get(routes::login))
         .route("/callback/{provider}", get(routes::oidc_callback))
         .route("/link/{token}", get(routes::link_info))
+        .route(
+            "/profile",
+            get(routes::profile).patch(routes::update_display_name),
+        )
 }
 
 #[derive(Serialize)]
@@ -493,6 +548,8 @@ impl IntoResponse for AuthError {
             AuthError::InvalidState => (StatusCode::BAD_REQUEST, "invalid_or_expired_state"),
             AuthError::ProviderMismatch => (StatusCode::BAD_REQUEST, "provider_mismatch"),
             AuthError::LinkMismatch => (StatusCode::BAD_REQUEST, "link_mismatch"),
+            AuthError::InvalidDisplayName => (StatusCode::BAD_REQUEST, "invalid_display_name"),
+            AuthError::UserNotFound => (StatusCode::INTERNAL_SERVER_ERROR, "user_not_found"),
             AuthError::TokenExchange => (StatusCode::UNAUTHORIZED, "token_exchange_failed"),
             AuthError::IdTokenVerification => {
                 (StatusCode::UNAUTHORIZED, "id_token_verification_failed")
