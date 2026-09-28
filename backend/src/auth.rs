@@ -21,7 +21,7 @@ use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::auth::linking::PendingLinkStore;
+use crate::auth::linking::{PendingLink, PendingLinkStore};
 use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
 use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
@@ -44,6 +44,9 @@ pub enum AuthError {
     #[error("provider mismatch")]
     ProviderMismatch,
 
+    #[error("could not confirm account link")]
+    LinkMismatch,
+
     #[error("token exchange failed")]
     TokenExchange,
 
@@ -60,6 +63,23 @@ pub enum AuthError {
     Initialization {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
+    },
+}
+
+/// The result of a completed OIDC callback.
+#[derive(Debug)]
+pub enum LoginOutcome {
+    /// A normal login (or a confirmed account link).
+    /// Contains the session id to set on the response.
+    LoggedIn { session_id: String },
+    /// The login's verified email collided with a different, existing
+    /// account. Nothing was created. `token` identifies the pending link so
+    /// the caller can guide the user through confirming it's them, by
+    /// logging in again via one of the `target_providers`.
+    LinkRequired {
+        token: String,
+        target_providers: Vec<String>,
+        masked_email: String,
     },
 }
 
@@ -179,6 +199,7 @@ impl AuthManager {
                     provier_id: provider_id.to_string(),
                     nonce,
                     redirect_url,
+                    linking: None,
                 },
             )
             .await;
@@ -187,11 +208,13 @@ impl AuthManager {
         Ok(auth_url.to_string())
     }
 
-    /// The [`String`] returned is the session id for the completed login.
-    ///
     /// Resolves identity, runs `authz`'s new-user bootstrap when this login
     /// created the account, and resolves the [`GlobalRole`](crate::authz::GlobalRole)
     /// to stash on the [`Session`].
+    ///
+    /// When the login's verified email collides with a *different* existing
+    /// account, no session is issued and no account is created, instead
+    /// returns [`LoginOutcome::LinkRequired`].
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn finish_login(
         &self,
@@ -199,7 +222,7 @@ impl AuthManager {
         code: String,
         state: String,
         authz: &AuthzManager,
-    ) -> Result<String, AuthError> {
+    ) -> Result<LoginOutcome, AuthError> {
         let pl = self
             .pending
             .take(&state)
@@ -253,10 +276,34 @@ impl AuthManager {
             .then(|| claims.email().map(|s| s.to_string()))
             .flatten();
 
+        let already_known = self
+            .identity
+            .find_user_id_by_identity(provider_id, subject)
+            .await?;
+
+        let confirmed_link = if let Some(link_token) = &pl.linking {
+            Some(self.confirm_pending_link(link_token, already_known).await?)
+        } else if already_known.is_none()
+            && let Some(outcome) = self
+                .check_email_collision(provider_id, subject, email.as_deref())
+                .await?
+        {
+            return Ok(outcome);
+        } else {
+            None
+        };
+
         let (user_id, is_new) = self
             .identity
             .resolve_or_create(provider_id, subject, &display_name, email.as_deref())
             .await?;
+
+        if let Some(link) = confirmed_link {
+            self.identity
+                .link_identity(user_id, &link.new_provider_id, &link.subject)
+                .await?;
+            tracing::info!(user_id = %user_id, linked_provider_id = %link.new_provider_id, "account link confirmed");
+        }
 
         let actor = Actor {
             id: user_id,
@@ -276,13 +323,97 @@ impl AuthManager {
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");
-        Ok(session_id)
+        Ok(LoginOutcome::LoggedIn { session_id })
+    }
+
+    /// Validates a login round trip that's confirming an account link.
+    ///
+    /// Must resolve to an identity that's already attached to *some*
+    /// account. Never creates one as a side effect of a link
+    /// confirmation, as this is meant to only be offered for linking already
+    /// existing accounts.
+    async fn confirm_pending_link(
+        &self,
+        link_token: &str,
+        already_known: Option<UserId>,
+    ) -> Result<PendingLink, AuthError> {
+        let existing_user_id = already_known.ok_or(AuthError::LinkMismatch)?;
+
+        let link = self
+            .links
+            .take(link_token)
+            .await
+            .ok_or(AuthError::LinkMismatch)?;
+        if link.target_user_id != existing_user_id {
+            return Err(AuthError::LinkMismatch);
+        }
+
+        Ok(link)
+    }
+
+    /// Checks whether a login that would otherwise create a new account has
+    /// a verified email already belonging to a different, existing one.
+    ///
+    /// On a collision, stashes a [`PendingLink`] and returns the
+    /// [`LoginOutcome`] for the login. `Ok(None)` means there's no collision
+    /// and login should proceed normally.
+    async fn check_email_collision(
+        &self,
+        provider_id: &str,
+        subject: &str,
+        email: Option<&str>,
+    ) -> Result<Option<LoginOutcome>, AuthError> {
+        let Some(email) = email else {
+            return Ok(None);
+        };
+        let Some(colliding_user_id) = self.identity.find_user_id_by_email(email).await? else {
+            return Ok(None);
+        };
+
+        let target_providers = self
+            .identity
+            .provider_ids_for_user(colliding_user_id)
+            .await?;
+        let link_token = rand_str(32);
+        self.links
+            .insert(
+                link_token.clone(),
+                PendingLink {
+                    new_provider_id: provider_id.to_string(),
+                    subject: subject.to_string(),
+                    email: email.to_string(),
+                    target_user_id: colliding_user_id,
+                },
+            )
+            .await;
+
+        tracing::info!(
+            target_user_id = %colliding_user_id,
+            "login collided with an existing verified email"
+        );
+        Ok(Some(LoginOutcome::LinkRequired {
+            token: link_token,
+            target_providers,
+            masked_email: mask_email(email),
+        }))
     }
 }
 
 impl FromRef<AppState> for AuthManager {
     fn from_ref(input: &AppState) -> Self {
         input.auth.clone()
+    }
+}
+
+/// Masks an email's local part down to its first character, e.g.
+/// `ada@example.com` -> `a***@example.com`.
+fn mask_email(email: &str) -> String {
+    match email.split_once('@') {
+        Some((local, domain)) => {
+            let first = local.chars().next().map(String::from).unwrap_or_default();
+            format!("{first}***@{domain}")
+        }
+        None => "***".to_string(),
     }
 }
 
@@ -316,6 +447,7 @@ impl IntoResponse for AuthError {
             AuthError::UnknownProvider => (StatusCode::BAD_REQUEST, "unknown_provider"),
             AuthError::InvalidState => (StatusCode::BAD_REQUEST, "invalid_or_expired_state"),
             AuthError::ProviderMismatch => (StatusCode::BAD_REQUEST, "provider_mismatch"),
+            AuthError::LinkMismatch => (StatusCode::BAD_REQUEST, "link_mismatch"),
             AuthError::TokenExchange => (StatusCode::UNAUTHORIZED, "token_exchange_failed"),
             AuthError::IdTokenVerification => {
                 (StatusCode::UNAUTHORIZED, "id_token_verification_failed")
