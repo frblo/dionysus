@@ -3,6 +3,7 @@ mod oidc;
 mod routes;
 mod session;
 mod session_store;
+mod ttl_store;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -172,7 +173,6 @@ impl AuthManager {
                     provier_id: provider_id.to_string(),
                     nonce,
                     redirect_url,
-                    created_at: tokio::time::Instant::now(),
                 },
             )
             .await;

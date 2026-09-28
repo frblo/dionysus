@@ -1,5 +1,6 @@
 //! A module for interacting with OIDC login and authentication flows.
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use openidconnect::{
     AuthUrl, ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl, Scope,
@@ -8,8 +9,8 @@ use openidconnect::{
     url,
 };
 use thiserror::Error;
-use tokio::{sync::RwLock, time::Instant};
 
+use crate::auth::ttl_store::TtlStore;
 use crate::config;
 
 /// Errors that can happen during an OIDC login process
@@ -36,15 +37,9 @@ pub enum OidcError {
     UnknownProvider(String),
 }
 
-/// A [`PendingLoginStore`] is used to store information about an ongoing OIDC
-/// login process.
-///
-/// Currently implemented as a in memory map.
-#[derive(Debug, Clone)]
-pub struct PendingLoginStore {
-    ttl: Duration,
-    inner: Arc<RwLock<HashMap<String, PendingLogin>>>,
-}
+/// Tracks information about an ongoing OIDC login process, keyed by its CSRF
+/// state token.
+pub type PendingLoginStore = TtlStore<PendingLogin>;
 
 /// Contains the neccessary state for an OIDC login to be able to safely
 /// finish.
@@ -53,43 +48,6 @@ pub struct PendingLogin {
     pub provier_id: String,
     pub nonce: Nonce,
     pub redirect_url: RedirectUrl,
-    pub created_at: Instant,
-}
-
-impl PendingLoginStore {
-    /// Create a [`PendingLoginStore`] with a set `ttl` [`Duration`].
-    pub fn new(ttl: Duration) -> Self {
-        Self {
-            ttl,
-            inner: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    /// Insert a [`PendingLogin`] into the store
-    pub async fn insert(&self, state: String, pl: PendingLogin) {
-        self.inner.write().await.insert(state, pl);
-    }
-
-    /// Take a [`PendingLogin`] out of the store
-    ///
-    /// If the login time has elapsed return [`None`] as if it didn't exist.
-    pub async fn take(&self, state: &str) -> Option<PendingLogin> {
-        let mut map = self.inner.write().await;
-        let pl = map.remove(state)?;
-        if pl.created_at.elapsed() > self.ttl {
-            return None;
-        }
-        Some(pl)
-    }
-
-    /// Garbage collect the [`PendingLoginStore`] removing any unfinished
-    /// [`PendingLogin`]s that have passed the allocated time.
-    pub async fn gc(&self) {
-        self.inner
-            .write()
-            .await
-            .retain(|_, v| v.created_at.elapsed() < self.ttl);
-    }
 }
 
 /// A static registry of the [`OidcProvider`]s available.
