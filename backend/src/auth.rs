@@ -86,6 +86,8 @@ pub enum LoginOutcome {
 /// What to show on the "an account already exists" link-confirmation
 /// prompt.
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "PendingLinkInfo.ts"))]
 pub struct PendingLinkInfo {
     pub target_providers: Vec<String>,
     pub masked_email: String,
