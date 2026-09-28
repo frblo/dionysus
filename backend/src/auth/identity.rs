@@ -207,6 +207,55 @@ impl IdentityStore {
             created_at: r.created_at,
         }))
     }
+
+    /// Find the user, if any, whose stored `email` matches.
+    ///
+    /// The caller's own claim must be verified before relying
+    /// on this for account-linking decisions.
+    pub async fn find_user_id_by_email(&self, email: &str) -> Result<Option<UserId>, Error> {
+        let row = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId" FROM users WHERE email = $1"#,
+            email
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| r.user_id))
+    }
+
+    /// Every provider a user already has a linked identity with.
+    pub async fn provider_ids_for_user(&self, user_id: UserId) -> Result<Vec<String>, Error> {
+        let rows = sqlx::query!(
+            "SELECT DISTINCT provider_id FROM user_identities WHERE user_id = $1",
+            user_id.0
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.provider_id).collect())
+    }
+
+    /// Attach a new `(provider_id, subject)` identity to an existing user.
+    ///
+    /// Only meant to be called once ownership of both sides has already been
+    /// proven.
+    pub async fn link_identity(
+        &self,
+        user_id: UserId,
+        provider_id: &str,
+        subject: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            "INSERT INTO user_identities (provider_id, subject, user_id) VALUES ($1, $2, $3)",
+            provider_id,
+            subject,
+            user_id.0,
+        )
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -409,5 +458,69 @@ mod tests {
         let results = store.search_by_display_name("a").await.unwrap();
 
         assert!(results.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_email_finds_a_verified_email(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", Some("ada@example.com"))
+            .await
+            .unwrap();
+
+        let found = store
+            .find_user_id_by_email("ada@example.com")
+            .await
+            .unwrap();
+
+        assert_eq!(found, Some(id));
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_email_returns_none_for_unknown_email(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let found = store
+            .find_user_id_by_email("nobody@example.com")
+            .await
+            .unwrap();
+
+        assert_eq!(found, None);
+    }
+
+    #[sqlx::test]
+    async fn provider_ids_for_user_lists_linked_providers(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.link_identity(id, "github", "xyz").await.unwrap();
+
+        let mut providers = store.provider_ids_for_user(id).await.unwrap();
+        providers.sort();
+
+        assert_eq!(providers, vec!["github".to_string(), "google".to_string()]);
+    }
+
+    #[sqlx::test]
+    async fn link_identity_attaches_to_the_given_user(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.link_identity(id, "github", "xyz").await.unwrap();
+
+        let (resolved, is_new) = store
+            .resolve_or_create("github", "xyz", "Ada", None)
+            .await
+            .unwrap();
+
+        assert_eq!(resolved, id);
+        assert!(!is_new);
     }
 }
