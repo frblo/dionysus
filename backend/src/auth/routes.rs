@@ -11,7 +11,7 @@ use serde::Serialize;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::{AuthError, SessionDelta, UserId};
+use crate::auth::{AuthError, LoginOutcome, SessionDelta, UserId};
 use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
@@ -101,17 +101,24 @@ pub async fn oidc_callback(
     Query(q): Query<CallbackQuery>,
     jar: CookieJar,
 ) -> Result<impl IntoResponse, AuthError> {
-    let session_id = state
+    let outcome = state
         .auth
         .finish_login(&provider, q.code, q.state, &state.authz)
         .await?;
 
-    let cookie = Cookie::build(("session", session_id))
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(axum_extra::extract::cookie::SameSite::Lax)
-        .build();
+    match outcome {
+        LoginOutcome::LoggedIn { session_id } => {
+            let cookie = Cookie::build(("session", session_id))
+                .path("/")
+                .http_only(true)
+                .secure(true)
+                .same_site(axum_extra::extract::cookie::SameSite::Lax)
+                .build();
 
-    Ok((jar.add(cookie), Redirect::to("/")))
+            Ok((jar.add(cookie), Redirect::to("/")))
+        }
+        LoginOutcome::LinkRequired { token, .. } => {
+            todo!("Implement the link page")
+        }
+    }
 }

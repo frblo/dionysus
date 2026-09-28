@@ -1,7 +1,4 @@
 //! Persistent user identity, separate from any one OIDC provider.
-//!
-//! Note that currently there is no mechanism for linking different providers
-//! to the same user. This is deliberately left until a later moment.
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -206,6 +203,23 @@ impl IdentityStore {
             display_name: r.display_name,
             created_at: r.created_at,
         }))
+    }
+
+    /// Find the user, if any, with the given `(provider_id, subject)` identity.
+    pub async fn find_user_id_by_identity(
+        &self,
+        provider_id: &str,
+        subject: &str,
+    ) -> Result<Option<UserId>, Error> {
+        let row = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId" FROM user_identities WHERE provider_id = $1 AND subject = $2"#,
+            provider_id,
+            subject,
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| r.user_id))
     }
 
     /// Find the user, if any, whose stored `email` matches.
@@ -458,6 +472,35 @@ mod tests {
         let results = store.search_by_display_name("a").await.unwrap();
 
         assert!(results.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_identity_finds_a_known_identity(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+
+        let found = store
+            .find_user_id_by_identity("google", "abc")
+            .await
+            .unwrap();
+
+        assert_eq!(found, Some(id));
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_identity_returns_none_for_unknown_identity(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let found = store
+            .find_user_id_by_identity("google", "abc")
+            .await
+            .unwrap();
+
+        assert_eq!(found, None);
     }
 
     #[sqlx::test]

@@ -48,6 +48,11 @@ pub struct PendingLogin {
     pub provier_id: String,
     pub nonce: Nonce,
     pub redirect_url: RedirectUrl,
+    /// Is set when this oifc login is confirming an account link rather than a
+    /// plain login.
+    /// Contains the token of the [`PendingLink`](crate::auth::linking::PendingLink)
+    /// it's confirming.
+    pub linking: Option<String>,
 }
 
 /// A static registry of the [`OidcProvider`]s available.

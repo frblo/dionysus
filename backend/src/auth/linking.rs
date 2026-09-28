@@ -2,8 +2,8 @@ use crate::auth::identity::UserId;
 use crate::auth::ttl_store::TtlStore;
 
 /// Tracks a login whose verified email collided with an existing, different
-/// account. It is tracked until the user either confirms it's them 
-/// (by logging in again via one of that account's own providers) or the 
+/// account. It is tracked until the user either confirms it's them
+/// (by logging in again via one of that account's own providers) or the
 /// link expires unconfirmed.
 ///
 /// Keyed by an opaque link token handed to the browser in place of a
