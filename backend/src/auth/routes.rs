@@ -11,7 +11,7 @@ use serde::Serialize;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::{AuthError, LoginOutcome, SessionDelta, UserId};
+use crate::auth::{AuthError, LoginOutcome, PendingLinkInfo, SessionDelta, UserId};
 use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
@@ -79,14 +79,22 @@ pub async fn sse(
 #[derive(Deserialize)]
 pub struct LoginQuery {
     pub provider: String,
+    pub link_token: Option<String>,
 }
 
 pub async fn login(
     State(state): State<AppState>,
     Query(q): Query<LoginQuery>,
 ) -> Result<Redirect, AuthError> {
-    let url = state.auth.start_login(&q.provider).await?;
+    let url = state.auth.start_login(&q.provider, q.link_token).await?;
     Ok(Redirect::to(&url))
+}
+
+pub async fn link_info(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+) -> Result<Json<PendingLinkInfo>, AuthError> {
+    Ok(Json(state.auth.pending_link_info(&token).await?))
 }
 
 #[derive(Deserialize)]
@@ -118,7 +126,7 @@ pub async fn oidc_callback(
             Ok((jar.add(cookie), Redirect::to("/")))
         }
         LoginOutcome::LinkRequired { token, .. } => {
-            todo!("Implement the link page")
+            Ok((jar, Redirect::to(&format!("/link?token={token}"))))
         }
     }
 }
