@@ -240,9 +240,16 @@ impl AuthManager {
                 .map(|s| s.to_string()))
             .unwrap_or_else(|| subject.to_string());
 
+        // Only care about and store email if the provider says it's verified.
+        let email = claims
+            .email_verified()
+            .unwrap_or(false)
+            .then(|| claims.email().map(|s| s.to_string()))
+            .flatten();
+
         let (user_id, is_new) = self
             .identity
-            .resolve_or_create(provider_id, subject, &display_name)
+            .resolve_or_create(provider_id, subject, &display_name, email.as_deref())
             .await?;
 
         let actor = Actor {

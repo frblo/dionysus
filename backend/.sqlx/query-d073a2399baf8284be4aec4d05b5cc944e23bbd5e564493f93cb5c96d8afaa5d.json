@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE users\n                SET\n                    last_login_at = now(),\n                    email = COALESCE(email, $2),\n                    updated_at = CASE\n                        WHEN email IS NULL AND $2 IS NOT NULL THEN now()\n                        ELSE updated_at\n                    END\n                WHERE user_id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d073a2399baf8284be4aec4d05b5cc944e23bbd5e564493f93cb5c96d8afaa5d"
+}
