@@ -83,6 +83,14 @@ pub enum LoginOutcome {
     },
 }
 
+/// What to show on the "an account already exists" link-confirmation
+/// prompt.
+#[derive(Serialize)]
+pub struct PendingLinkInfo {
+    pub target_providers: Vec<String>,
+    pub masked_email: String,
+}
+
 #[derive(Clone)]
 pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
@@ -163,8 +171,28 @@ impl AuthManager {
         self.sessions.update_role_for_user(user_id, role).await;
     }
 
+    /// Starts a login oidc round trip.
+    ///
+    /// When `link_token` is given, this round trip confirms a pending
+    /// account link rather than a plain login. The `provider_id` must
+    /// therefore be one of the target account's own already-linked providers.
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
-    pub async fn start_login(&self, provider_id: &str) -> Result<String, AuthError> {
+    pub async fn start_login(
+        &self,
+        provider_id: &str,
+        link_token: Option<String>,
+    ) -> Result<String, AuthError> {
+        if let Some(token) = &link_token {
+            let link = self.links.get(token).await.ok_or(AuthError::LinkMismatch)?;
+            let target_providers = self
+                .identity
+                .provider_ids_for_user(link.target_user_id)
+                .await?;
+            if !target_providers.iter().any(|p| p == provider_id) {
+                return Err(AuthError::LinkMismatch);
+            }
+        }
+
         let provider = self
             .oidc
             .get(provider_id)
@@ -199,7 +227,7 @@ impl AuthManager {
                     provier_id: provider_id.to_string(),
                     nonce,
                     redirect_url,
-                    linking: None,
+                    linking: link_token,
                 },
             )
             .await;
@@ -397,6 +425,20 @@ impl AuthManager {
             masked_email: mask_email(email),
         }))
     }
+
+    /// What to show on the link-confirmation prompt for a pending link.
+    pub async fn pending_link_info(&self, token: &str) -> Result<PendingLinkInfo, AuthError> {
+        let link = self.links.get(token).await.ok_or(AuthError::LinkMismatch)?;
+        let target_providers = self
+            .identity
+            .provider_ids_for_user(link.target_user_id)
+            .await?;
+
+        Ok(PendingLinkInfo {
+            target_providers,
+            masked_email: mask_email(&link.email),
+        })
+    }
 }
 
 impl FromRef<AppState> for AuthManager {
@@ -432,6 +474,7 @@ pub fn router() -> Router<AppState> {
         .route("/providers", get(routes::providers))
         .route("/login", get(routes::login))
         .route("/callback/{provider}", get(routes::oidc_callback))
+        .route("/link/{token}", get(routes::link_info))
 }
 
 #[derive(Serialize)]
