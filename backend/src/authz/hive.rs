@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use reqwest::Url;
 use serde::Deserialize;
 
-use crate::auth::{IdentityStore, UserId};
+use crate::auth::{IdentityStore, UserEvents, UserId};
 use crate::authz::model::Actor;
 use crate::authz::{Error, GlobalRole, RoleSource};
 use crate::config::Hive;
@@ -16,6 +16,9 @@ use crate::ttl_store::TtlStore;
 ///
 /// Answers are cached per user. A Hive failure with no fresh cached answer is
 /// an error.
+///
+/// Roles change in Hive without Dionysus being involved, so a refetch that
+/// finds a different role than before announces it on `events`.
 pub struct HiveRoleSource {
     http: reqwest::Client,
     base_url: Url,
@@ -23,10 +26,15 @@ pub struct HiveRoleSource {
     provider_id: String,
     identities: IdentityStore,
     cache: TtlStore<UserId, GlobalRole>,
+    events: UserEvents,
 }
 
 impl HiveRoleSource {
-    pub fn new(config: &Hive, identities: IdentityStore) -> Result<Self, anyhow::Error> {
+    pub fn new(
+        config: &Hive,
+        identities: IdentityStore,
+        events: UserEvents,
+    ) -> Result<Self, anyhow::Error> {
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(config.timeout_secs))
             .build()?;
@@ -38,6 +46,7 @@ impl HiveRoleSource {
             provider_id: config.provider_id.clone(),
             identities,
             cache: TtlStore::new(Duration::from_secs(config.cache_ttl_secs)),
+            events,
         })
     }
 
@@ -85,7 +94,10 @@ impl RoleSource for HiveRoleSource {
         })?;
         let role = map_permissions(&permissions);
 
-        self.cache.insert(actor.id, role).await;
+        let previous = self.cache.insert(actor.id, role).await;
+        if previous.is_some_and(|previous| previous != role) {
+            self.events.role_changed(actor.id, role);
+        }
 
         Ok(role)
     }

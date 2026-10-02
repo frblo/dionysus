@@ -34,7 +34,8 @@ Then log in with that subject. See `--help` for more details on how to use the s
 | --- | --- | --- |
 | database.url | Yes | postgresql://USER:PWD@HOST:PORT/DB |
 | oidc.external_base_url | Yes | Base for externally reachable url. E.g. "https://your-domain.com" |
-| oidc.providers.<name> | Yes | See [OIDC provider config](#oidc-providers-config) section |
+| `oidc.providers.<name>` | Yes | See [OIDC provider config](#oidc-providers-config) section |
+| hive.* | No | Take roles from Hive. See [Hive config](#hive-config) section |
 | logging.filter | No | [`tracing_subscriber` env-filter](https://docs.rs/tracing-subscriber/0.3.23/tracing_subscriber/filter/struct.EnvFilter.html) directive. Default: "info" |
 | logging.json | No | Emit logs as JSON. Default: true |
 | listener.ip | No | Default: 0.0.0.0 (listen everywhere) |
@@ -65,13 +66,13 @@ Dionysus supports having multiple OIDC providers at the same time. Each one of t
 
 | Setting | Required | Format |
 | --- | --- | --- |
-| oidc.providers.<name>.issuer | Yes | Base url of the issuer |
-| oidc.providers.<name>.external_issuer | No | An external url to the issuer reachable from the browser |
-| oidc.providers.<name>.client_id | Yes | Client id for issuer |
-| oidc.providers.<name>.client_secret | Yes | Client secret for issuer |
-| oidc.providers.<name>.scopes | Yes | A list of the scopes to request from the issuer |
+| `oidc.providers.<name>.issuer` | Yes | Base url of the issuer |
+| `oidc.providers.<name>.external_issuer` | No | An external url to the issuer reachable from the browser |
+| `oidc.providers.<name>.client_id` | Yes | Client id for issuer |
+| `oidc.providers.<name>.client_secret` | Yes | Client secret for issuer |
+| `oidc.providers.<name>.scopes` | Yes | A list of the scopes to request from the issuer |
 
-These are configured in the same way as described above where <name> specifies the identifier for the issuer.
+These are configured in the same way as described above where `<name>` specifies the identifier for the issuer.
 
 ```toml
 [oidc.providers.your_oidc]
@@ -90,6 +91,25 @@ DIONYSUS_OIDC__PROVIDERS__YOUR_OIDC__SCOPES__0="openid"
 DIONYSUS_OIDC__PROVIDERS__YOUR_OIDC__SCOPES__1="profile"
 DIONYSUS_OIDC__PROVIDERS__YOUR_OIDC__SCOPES__2="email"
 ```
+
+### Hive config
+Optional. When set, global roles come from [Hive](https://github.com/datasektionen/hive) instead of the local database.
+
+| Setting | Required | Format |
+| --- | --- | --- |
+| hive.base_url | Yes | Base url of Hive |
+| hive.token | Yes | API secret token for the Hive system `dionysus` |
+| hive.provider_id | Yes | Name of the OIDC provider (`oidc.providers.<name>`) that logs in against Hive's identity provider |
+| hive.cache_ttl_secs | No | Default: 60 |
+| hive.timeout_secs | No | Default: 5 |
+
+Setup in Hive:
+1. Create a system `dionysus`.
+2. Add the unscoped permissions `admin` and `user` to it.
+3. Assign them to the groups that should have them.
+4. Create an API token for the system and give it the permission `$hive:api-check-permissions`.
+
+Users are matched by their subject at `hive.provider_id`, so they need to have logged in with that provider. Everyone else is a guest. Roles are changed in Hive, not in Dionysus, and take effect within `hive.cache_ttl_secs`. If Hive can't be reached, role lookups fail and Dionysus will not work properly.
 
 ## Issues
 

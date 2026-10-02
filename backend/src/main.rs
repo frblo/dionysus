@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     let db = Db::new(pool);
     let auth = AuthManager::new(&config, db.clone()).await?;
 
-    let state = state::AppState::new(db, auth).await;
+    let state = state::AppState::new(db, auth, config.hive.as_ref()).await?;
 
     let app = app::router(state);
     tracing::info!("application initialized");

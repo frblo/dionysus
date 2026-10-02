@@ -45,14 +45,21 @@ impl<K: Eq + Hash, V> TtlStore<K, V> {
     }
 
     /// Insert a value under `key`.
-    pub async fn insert(&self, key: K, value: V) {
-        self.inner.write().await.insert(
-            key,
-            Entry {
-                created_at: Instant::now(),
-                value,
-            },
-        );
+    ///
+    /// Returns the value it replaced, even if that one's ttl had already
+    /// elapsed (and it hadn't been garbage collected yet).
+    pub async fn insert(&self, key: K, value: V) -> Option<V> {
+        self.inner
+            .write()
+            .await
+            .insert(
+                key,
+                Entry {
+                    created_at: Instant::now(),
+                    value,
+                },
+            )
+            .map(|e| e.value)
     }
 
     /// Remove and return the value for `key`.
