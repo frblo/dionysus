@@ -1,9 +1,11 @@
-//! A generic TTL-bounded map used to track short-lived, single-use state
-//! across a round trip through an external system (e.g. an OIDC provider
-//! redirect).
+//! A generic TTL-bounded map for short-lived state, such as single-use state
+//! tracked across a round trip through an external system (e.g. an OIDC
+//! provider redirect) or a cached answer from one.
 //!
 //! Currently implemented as an in-memory map.
+use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,20 +13,21 @@ use tokio::sync::RwLock;
 use tokio::time::Instant;
 
 #[derive(Debug)]
-struct Entry<T> {
+struct Entry<V> {
     created_at: Instant,
-    value: T,
+    value: V,
 }
 
 #[derive(Debug)]
-pub struct TtlStore<T> {
+pub struct TtlStore<K, V> {
     ttl: Duration,
-    inner: Arc<RwLock<HashMap<String, Entry<T>>>>,
+    inner: Arc<RwLock<HashMap<K, Entry<V>>>>,
 }
 
 //  Written instaed of `#[derive(Clone)]` since the derive would require
-//  `T: Clone` but `T` is inside an `Arc`, which is `Clone` regardless of `T`.
-impl<T> Clone for TtlStore<T> {
+//  `K: Clone` and `V: Clone` but they are inside an `Arc`, which is `Clone`
+//  regardless.
+impl<K, V> Clone for TtlStore<K, V> {
     fn clone(&self) -> Self {
         Self {
             ttl: self.ttl,
@@ -33,7 +36,7 @@ impl<T> Clone for TtlStore<T> {
     }
 }
 
-impl<T> TtlStore<T> {
+impl<K: Eq + Hash, V> TtlStore<K, V> {
     pub fn new(ttl: Duration) -> Self {
         Self {
             ttl,
@@ -42,7 +45,7 @@ impl<T> TtlStore<T> {
     }
 
     /// Insert a value under `key`.
-    pub async fn insert(&self, key: String, value: T) {
+    pub async fn insert(&self, key: K, value: V) {
         self.inner.write().await.insert(
             key,
             Entry {
@@ -56,7 +59,11 @@ impl<T> TtlStore<T> {
     ///
     /// If the entry's ttl has elapsed, returns [`None`] as if it didn't
     /// exist.
-    pub async fn take(&self, key: &str) -> Option<T> {
+    pub async fn take<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let mut map = self.inner.write().await;
         let entry = map.remove(key)?;
         if entry.created_at.elapsed() > self.ttl {
@@ -75,12 +82,16 @@ impl<T> TtlStore<T> {
     }
 }
 
-impl<T: Clone> TtlStore<T> {
+impl<K: Eq + Hash, V: Clone> TtlStore<K, V> {
     /// Return a clone of the value for `key`, without removing it.
     ///
     /// If the entry's ttl has elapsed, returns [`None`] as if it didn't
     /// exist.
-    pub async fn get(&self, key: &str) -> Option<T> {
+    pub async fn get<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let map = self.inner.read().await;
         let entry = map.get(key)?;
         if entry.created_at.elapsed() > self.ttl {

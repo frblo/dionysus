@@ -4,7 +4,6 @@ mod oidc;
 mod routes;
 mod session;
 mod session_store;
-mod ttl_store;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,12 +20,13 @@ use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::auth::linking::{PendingLink, PendingLinkStore};
-use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
+use crate::auth::linking::PendingLink;
+use crate::auth::oidc::{OidcRegistry, PendingLogin};
 use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
 use crate::db::Db;
 use crate::state::AppState;
+use crate::ttl_store::TtlStore;
 
 pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
@@ -113,8 +113,16 @@ pub struct Profile {
 #[derive(Clone)]
 pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
-    pending: PendingLoginStore,
-    links: PendingLinkStore,
+    /// Ongoing OIDC logins, keyed by their CSRF state token.
+    pending: TtlStore<String, PendingLogin>,
+    /// Logins whose verified email collided with an existing, different
+    /// account. Tracked until the user either confirms it's them (by logging
+    /// in again via one of that account's own providers) or the link expires
+    /// unconfirmed.
+    ///
+    /// Keyed by an opaque link token handed to the browser in place of a
+    /// session.
+    links: TtlStore<String, PendingLink>,
     sessions: SessionStore,
     identity: IdentityStore,
     external_base_url: String,
@@ -128,8 +136,8 @@ impl AuthManager {
                 source: Box::new(e),
             })?;
 
-        let pending = PendingLoginStore::new(Duration::from_mins(1));
-        let links = PendingLinkStore::new(Duration::from_mins(5));
+        let pending = TtlStore::new(Duration::from_mins(1));
+        let links = TtlStore::new(Duration::from_mins(5));
 
         let sessions = SessionStore::new();
 

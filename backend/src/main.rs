@@ -7,6 +7,7 @@ mod db;
 mod logging;
 mod rooms;
 mod state;
+mod ttl_store;
 mod ws;
 
 use std::net::SocketAddr;
