@@ -144,8 +144,11 @@
 
   $effect(() => {
     if (!view) return;
-    setVimEnabled(view, userSettings.vimEnabled);
-    setTrailingSpacesEnabled(view, userSettings.highlighTrailingSpacesEnabled);
+    setVimEnabled(view, userSettings.current.vimEnabled);
+    setTrailingSpacesEnabled(
+      view,
+      userSettings.current.highlighTrailingSpacesEnabled,
+    );
   });
 
   $effect(() => {
