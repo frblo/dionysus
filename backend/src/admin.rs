@@ -115,6 +115,6 @@ async fn set_role(
     let subject = Actor { id: target.id };
 
     state.authz.set_global_role(&subject, payload.role).await?;
-    state.auth.events().role_changed(subject.id);
+    state.auth.events().role_changed(subject.id, payload.role);
     Ok(())
 }

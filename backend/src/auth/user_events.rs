@@ -1,20 +1,23 @@
 use tokio::sync::broadcast;
 
 use crate::auth::UserId;
+use crate::authz::GlobalRole;
 
 /// Something about a user changed that their open sessions should react to.
 #[derive(Debug, Clone)]
 pub enum UserEvent {
-    /// The user's [`GlobalRole`](crate::authz::GlobalRole) changed.
-    RoleChanged { user_id: UserId },
+    RoleChanged {
+        user_id: UserId,
+        role: GlobalRole,
+    },
     DisplayNameChanged {
         user_id: UserId,
         display_name: String,
     },
 }
 
-/// Broadcasts [`UserEvent`]s, so the frontend can re-fetch what changed
-/// instead of waiting for a reload.
+/// Broadcasts [`UserEvent`]s, carrying the new value so the frontend can
+/// patch its state instead of re-fetching it.
 #[derive(Clone)]
 pub struct UserEvents {
     tx: broadcast::Sender<UserEvent>,
@@ -30,8 +33,8 @@ impl UserEvents {
         self.tx.subscribe()
     }
 
-    pub fn role_changed(&self, user_id: UserId) {
-        let _ = self.tx.send(UserEvent::RoleChanged { user_id });
+    pub fn role_changed(&self, user_id: UserId, role: GlobalRole) {
+        let _ = self.tx.send(UserEvent::RoleChanged { user_id, role });
     }
 
     pub fn display_name_changed(&self, user_id: UserId, display_name: &str) {

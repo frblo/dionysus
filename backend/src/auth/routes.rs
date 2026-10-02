@@ -41,6 +41,22 @@ pub struct MeUser {
     display_name: String,
 }
 
+/// Payload of the `role-changed` SSE event.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UserEvents.ts"))]
+pub struct RoleChangedEvent {
+    global_role: GlobalRole,
+}
+
+/// Payload of the `display-name-changed` SSE event.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UserEvents.ts"))]
+pub struct DisplayNameChangedEvent {
+    display_name: String,
+}
+
 pub async fn me(
     AuthSession(session): AuthSession,
     State(state): State<AppState>,
@@ -95,21 +111,31 @@ pub async fn sse(
 
     let stream = rx_stream.filter_map(move |res| {
         let event = match res {
-            Ok(UserEvent::RoleChanged { user_id }) if user_id == my_user_id => {
-                Event::default().event("role-changed").data("role-changed")
-            }
-            Ok(UserEvent::DisplayNameChanged { user_id, .. }) if user_id == my_user_id => {
+            Ok(UserEvent::RoleChanged { user_id, role }) if user_id == my_user_id => {
                 Event::default()
-                    .event("display-name-changed")
-                    .data("display-name-changed")
+                    .event("role-changed")
+                    .json_data(RoleChangedEvent { global_role: role })
             }
+            Ok(UserEvent::DisplayNameChanged {
+                user_id,
+                display_name,
+            }) if user_id == my_user_id => Event::default()
+                .event("display-name-changed")
+                .json_data(DisplayNameChangedEvent { display_name }),
             Ok(_) => return None,
             Err(BroadcastStreamRecvError::Lagged(n)) => {
                 tracing::warn!(missed_messages = n, "SSE recv lagged; requesting resync");
-                Event::default().event("resync").data("resync")
+                Ok(Event::default().event("resync").data("resync"))
             }
         };
-        Some(Ok(event))
+
+        match event {
+            Ok(event) => Some(Ok(event)),
+            Err(e) => {
+                tracing::error!(error = %e, "failed to serialize user event");
+                None
+            }
+        }
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
