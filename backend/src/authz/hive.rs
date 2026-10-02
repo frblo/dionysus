@@ -1,6 +1,95 @@
+//! [`RoleSource`] backed by Hive's permissions API.
+use std::time::Duration;
+
+use async_trait::async_trait;
+use reqwest::Url;
 use serde::Deserialize;
 
-use crate::authz::GlobalRole;
+use crate::auth::{IdentityStore, UserId};
+use crate::authz::model::Actor;
+use crate::authz::{Error, GlobalRole, RoleSource};
+use crate::config::Hive;
+use crate::ttl_store::TtlStore;
+
+/// Resolves [`GlobalRole`] from the permissions Hive holds for the user's
+/// identity at the configured provider.
+///
+/// Answers are cached per user. A Hive failure with no fresh cached answer is
+/// an error.
+pub struct HiveRoleSource {
+    http: reqwest::Client,
+    base_url: Url,
+    token: String,
+    provider_id: String,
+    identities: IdentityStore,
+    cache: TtlStore<UserId, GlobalRole>,
+}
+
+impl HiveRoleSource {
+    pub fn new(config: &Hive, identities: IdentityStore) -> Result<Self, anyhow::Error> {
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(config.timeout_secs))
+            .build()?;
+
+        Ok(Self {
+            http,
+            base_url: Url::parse(&config.base_url)?,
+            token: config.token.clone(),
+            provider_id: config.provider_id.clone(),
+            identities,
+            cache: TtlStore::new(Duration::from_secs(config.cache_ttl_secs)),
+        })
+    }
+
+    fn permissions_url(&self, subject: &str) -> Url {
+        let mut url = self.base_url.clone();
+        if let Ok(mut segments) = url.path_segments_mut() {
+            segments
+                .pop_if_empty()
+                .extend(["api", "v1", "user", subject, "permissions"]);
+        }
+        url
+    }
+
+    async fn fetch(&self, subject: &str) -> Result<Vec<Permission>, reqwest::Error> {
+        self.http
+            .get(self.permissions_url(subject))
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+    }
+}
+
+#[async_trait]
+impl RoleSource for HiveRoleSource {
+    async fn global_role(&self, actor: &Actor) -> Result<GlobalRole, Error> {
+        if let Some(role) = self.cache.get(&actor.id).await {
+            return Ok(role);
+        }
+
+        let Some(subject) = self
+            .identities
+            .subject_for(actor.id, &self.provider_id)
+            .await
+            .map_err(|e| Error::Backend { source: e.into() })?
+        else {
+            return Ok(GlobalRole::Guest);
+        };
+
+        let permissions = self.fetch(&subject).await.map_err(|e| {
+            tracing::warn!(error = %e, "hive permissions lookup failed");
+            Error::Backend { source: e.into() }
+        })?;
+        let role = map_permissions(&permissions);
+
+        self.cache.insert(actor.id, role).await;
+
+        Ok(role)
+    }
+}
 
 /// One entry of Hive's `/api/v1/user/{username}/permissions` response.
 #[derive(Debug, Deserialize)]
