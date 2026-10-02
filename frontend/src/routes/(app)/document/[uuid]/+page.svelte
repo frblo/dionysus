@@ -142,7 +142,7 @@
         <ArrowClockwise />
       </button>
     {:else}
-      <p class="text-sm font-medium text-gray-400 truncate" >READ ONLY</p>
+      <p class="text-sm font-medium text-gray-400 truncate">READ ONLY</p>
     {/if}
   {/snippet}
 
@@ -154,16 +154,6 @@
       title="Sync preview to cursor position"
     >
       <BoxArrowInDownRight />
-    </button>
-  {/if}
-
-  {#if editorViewSettings.panelFocus !== PanelFocus.PreviewOnly}
-    <button
-      class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
-      onclick={() =>
-        (userSettings.current.vimEnabled = !userSettings.current.vimEnabled)}
-    >
-      {userSettings.current.vimEnabled ? "Vim ON" : "Vim OFF"}
     </button>
   {/if}
 
