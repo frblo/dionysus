@@ -8,7 +8,7 @@ type UserSettings = {
 export const userSettings = new LocalStorage<UserSettings>(
   "dionysus:userSettings",
   {
-    vimEnabled: true,
+    vimEnabled: false,
     highlighTrailingSpacesEnabled: true,
   },
 );
