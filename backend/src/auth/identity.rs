@@ -1,7 +1,4 @@
 //! Persistent user identity, separate from any one OIDC provider.
-//!
-//! Note that currently there is no mechanism for linking different providers
-//! to the same user. This is deliberately left until a later moment.
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -31,6 +28,7 @@ impl From<sqlx::Error> for Error {
 pub struct User {
     pub id: UserId,
     pub display_name: String,
+    pub email: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -62,13 +60,20 @@ impl IdentityStore {
     ///
     /// The returned `bool` is `true` when a new user is created, so a caller
     /// can provision anything that only needs to happen once per person
-    /// (e.g. an initial role). Refreshes `display_name` on repeat
-    /// logins.
+    /// (e.g. an initial role).
+    ///
+    /// `display_name` is captured once, at account creation, and never
+    /// updated on repeat logins.
+    ///
+    /// `email` is only ever stored when the caller already knows it's verified
+    /// (e.g. not `None`). It's captured the first time a verified email is
+    /// provided, and never updated on repeat logins.
     pub async fn resolve_or_create(
         &self,
         provider_id: &str,
         subject: &str,
         display_name: &str,
+        email: Option<&str>,
     ) -> Result<(UserId, bool), Error> {
         let mut tx = self.db.pool().begin().await?;
 
@@ -90,17 +95,28 @@ impl IdentityStore {
 
         let (user_id, is_new) = if let Some(row) = existing {
             sqlx::query!(
-                "UPDATE users SET display_name = $2, updated_at = now() WHERE user_id = $1",
+                r#"
+                UPDATE users
+                SET
+                    last_login_at = now(),
+                    email = COALESCE(email, $2),
+                    updated_at = CASE
+                        WHEN email IS NULL AND $2 IS NOT NULL THEN now()
+                        ELSE updated_at
+                    END
+                WHERE user_id = $1
+                "#,
                 row.user_id.0,
-                display_name,
+                email,
             )
             .execute(&mut *tx)
             .await?;
             (row.user_id, false)
         } else {
             let row = sqlx::query!(
-                r#"INSERT INTO users (display_name) VALUES ($1) RETURNING user_id AS "user_id!: UserId""#,
+                r#"INSERT INTO users (display_name, email) VALUES ($1, $2) RETURNING user_id AS "user_id!: UserId""#,
                 display_name,
+                email,
             )
             .fetch_one(&mut *tx)
             .await?;
@@ -124,7 +140,7 @@ impl IdentityStore {
     /// Every known user, oldest first.
     pub async fn list_users(&self) -> Result<Vec<User>, Error> {
         let rows = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users ORDER BY created_at"#
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at FROM users ORDER BY created_at"#
         )
         .fetch_all(self.db.pool())
         .await?;
@@ -134,6 +150,7 @@ impl IdentityStore {
             .map(|r| User {
                 id: r.user_id,
                 display_name: r.display_name,
+                email: r.email,
                 created_at: r.created_at,
             })
             .collect())
@@ -155,7 +172,7 @@ impl IdentityStore {
         }
 
         let rows = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at
                FROM users
                WHERE display_name ILIKE '%' || $1 || '%'
                ORDER BY display_name
@@ -170,6 +187,7 @@ impl IdentityStore {
             .map(|r| User {
                 id: r.user_id,
                 display_name: r.display_name,
+                email: r.email,
                 created_at: r.created_at,
             })
             .collect())
@@ -177,7 +195,7 @@ impl IdentityStore {
 
     pub async fn get_user(&self, id: UserId) -> Result<Option<User>, Error> {
         let row = sqlx::query!(
-            r#"SELECT user_id AS "user_id!: UserId", display_name, created_at FROM users WHERE user_id = $1"#,
+            r#"SELECT user_id AS "user_id!: UserId", display_name, email, created_at FROM users WHERE user_id = $1"#,
             id.0
         )
         .fetch_optional(self.db.pool())
@@ -186,8 +204,91 @@ impl IdentityStore {
         Ok(row.map(|r| User {
             id: r.user_id,
             display_name: r.display_name,
+            email: r.email,
             created_at: r.created_at,
         }))
+    }
+
+    pub async fn update_display_name(
+        &self,
+        user_id: UserId,
+        display_name: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            "UPDATE users SET display_name = $2, updated_at = now() WHERE user_id = $1",
+            user_id.0,
+            display_name,
+        )
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
+    }
+
+    /// Find the user, if any, with the given `(provider_id, subject)` identity.
+    pub async fn find_user_id_by_identity(
+        &self,
+        provider_id: &str,
+        subject: &str,
+    ) -> Result<Option<UserId>, Error> {
+        let row = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId" FROM user_identities WHERE provider_id = $1 AND subject = $2"#,
+            provider_id,
+            subject,
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| r.user_id))
+    }
+
+    /// Find the user, if any, whose stored `email` matches.
+    ///
+    /// The caller's own claim must be verified before relying
+    /// on this for account-linking decisions.
+    pub async fn find_user_id_by_email(&self, email: &str) -> Result<Option<UserId>, Error> {
+        let row = sqlx::query!(
+            r#"SELECT user_id AS "user_id!: UserId" FROM users WHERE email = $1"#,
+            email
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| r.user_id))
+    }
+
+    /// Every provider a user already has a linked identity with.
+    pub async fn provider_ids_for_user(&self, user_id: UserId) -> Result<Vec<String>, Error> {
+        let rows = sqlx::query!(
+            "SELECT DISTINCT provider_id FROM user_identities WHERE user_id = $1",
+            user_id.0
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.provider_id).collect())
+    }
+
+    /// Attach a new `(provider_id, subject)` identity to an existing user.
+    ///
+    /// Only meant to be called once ownership of both sides has already been
+    /// proven.
+    pub async fn link_identity(
+        &self,
+        user_id: UserId,
+        provider_id: &str,
+        subject: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            "INSERT INTO user_identities (provider_id, subject, user_id) VALUES ($1, $2, $3)",
+            provider_id,
+            subject,
+            user_id.0,
+        )
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
     }
 }
 
@@ -200,7 +301,7 @@ mod tests {
         let store = IdentityStore::new(Db::new(pool));
 
         let (_, is_new) = store
-            .resolve_or_create("google", "abc", "Ada")
+            .resolve_or_create("google", "abc", "Ada", None)
             .await
             .unwrap();
 
@@ -208,15 +309,15 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn repeat_login_reuses_user_id_and_refreshes_name(pool: sqlx::PgPool) {
+    async fn repeat_login_reuses_user_id_and_does_not_refresh_name(pool: sqlx::PgPool) {
         let store = IdentityStore::new(Db::new(pool.clone()));
 
         let (first, first_is_new) = store
-            .resolve_or_create("google", "abc", "Ada")
+            .resolve_or_create("google", "abc", "Ada", None)
             .await
             .unwrap();
         let (second, second_is_new) = store
-            .resolve_or_create("google", "abc", "Ada Lovelace")
+            .resolve_or_create("google", "abc", "Ada Lovelace", None)
             .await
             .unwrap();
 
@@ -229,6 +330,103 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap();
+        assert_eq!(name, "Ada");
+    }
+
+    #[sqlx::test]
+    async fn repeat_login_bumps_last_login_at(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        let created_login =
+            sqlx::query_scalar!("SELECT last_login_at FROM users WHERE user_id = $1", id.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        let second_login =
+            sqlx::query_scalar!("SELECT last_login_at FROM users WHERE user_id = $1", id.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        assert!(second_login >= created_login);
+    }
+
+    #[sqlx::test]
+    async fn email_is_stored_on_creation(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", Some("ada@example.com"))
+            .await
+            .unwrap();
+
+        let email = sqlx::query_scalar!("SELECT email FROM users WHERE user_id = $1", id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(email.as_deref(), Some("ada@example.com"));
+    }
+
+    #[sqlx::test]
+    async fn missing_email_is_backfilled_on_repeat_login(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store
+            .resolve_or_create("google", "abc", "Ada", Some("ada@example.com"))
+            .await
+            .unwrap();
+
+        let email = sqlx::query_scalar!("SELECT email FROM users WHERE user_id = $1", id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(email.as_deref(), Some("ada@example.com"));
+    }
+
+    #[sqlx::test]
+    async fn set_email_is_not_overwritten_by_a_later_login(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", Some("ada@example.com"))
+            .await
+            .unwrap();
+        store
+            .resolve_or_create("google", "abc", "Ada", Some("ada.lovelace@example.com"))
+            .await
+            .unwrap();
+
+        let email = sqlx::query_scalar!("SELECT email FROM users WHERE user_id = $1", id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(email.as_deref(), Some("ada@example.com"));
+    }
+
+    #[sqlx::test]
+    async fn update_display_name_changes_it(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool.clone()));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.update_display_name(id, "Ada Lovelace").await.unwrap();
+
+        let name = store.get_user(id).await.unwrap().unwrap().display_name;
         assert_eq!(name, "Ada Lovelace");
     }
 
@@ -237,11 +435,11 @@ mod tests {
         let store = IdentityStore::new(Db::new(pool));
 
         let (first, _) = store
-            .resolve_or_create("google", "first", "Ada")
+            .resolve_or_create("google", "first", "Ada", None)
             .await
             .unwrap();
         let (second, _) = store
-            .resolve_or_create("google", "second", "Bob")
+            .resolve_or_create("google", "second", "Bob", None)
             .await
             .unwrap();
 
@@ -253,11 +451,11 @@ mod tests {
         let store = IdentityStore::new(Db::new(pool));
 
         let (first, _) = store
-            .resolve_or_create("google", "first", "Ada")
+            .resolve_or_create("google", "first", "Ada", None)
             .await
             .unwrap();
         let (second, _) = store
-            .resolve_or_create("google", "second", "Bob")
+            .resolve_or_create("google", "second", "Bob", None)
             .await
             .unwrap();
 
@@ -282,10 +480,13 @@ mod tests {
         let store = IdentityStore::new(Db::new(pool));
 
         store
-            .resolve_or_create("google", "a", "Ada Lovelace")
+            .resolve_or_create("google", "a", "Ada Lovelace", None)
             .await
             .unwrap();
-        store.resolve_or_create("google", "b", "Bob").await.unwrap();
+        store
+            .resolve_or_create("google", "b", "Bob", None)
+            .await
+            .unwrap();
 
         let results = store.search_by_display_name("lovelace").await.unwrap();
 
@@ -297,10 +498,106 @@ mod tests {
     async fn search_rejects_short_queries(pool: sqlx::PgPool) {
         let store = IdentityStore::new(Db::new(pool));
 
-        store.resolve_or_create("google", "a", "A").await.unwrap();
+        store
+            .resolve_or_create("google", "a", "A", None)
+            .await
+            .unwrap();
 
         let results = store.search_by_display_name("a").await.unwrap();
 
         assert!(results.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_identity_finds_a_known_identity(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+
+        let found = store
+            .find_user_id_by_identity("google", "abc")
+            .await
+            .unwrap();
+
+        assert_eq!(found, Some(id));
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_identity_returns_none_for_unknown_identity(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let found = store
+            .find_user_id_by_identity("google", "abc")
+            .await
+            .unwrap();
+
+        assert_eq!(found, None);
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_email_finds_a_verified_email(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", Some("ada@example.com"))
+            .await
+            .unwrap();
+
+        let found = store
+            .find_user_id_by_email("ada@example.com")
+            .await
+            .unwrap();
+
+        assert_eq!(found, Some(id));
+    }
+
+    #[sqlx::test]
+    async fn find_user_id_by_email_returns_none_for_unknown_email(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let found = store
+            .find_user_id_by_email("nobody@example.com")
+            .await
+            .unwrap();
+
+        assert_eq!(found, None);
+    }
+
+    #[sqlx::test]
+    async fn provider_ids_for_user_lists_linked_providers(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.link_identity(id, "github", "xyz").await.unwrap();
+
+        let mut providers = store.provider_ids_for_user(id).await.unwrap();
+        providers.sort();
+
+        assert_eq!(providers, vec!["github".to_string(), "google".to_string()]);
+    }
+
+    #[sqlx::test]
+    async fn link_identity_attaches_to_the_given_user(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.link_identity(id, "github", "xyz").await.unwrap();
+
+        let (resolved, is_new) = store
+            .resolve_or_create("github", "xyz", "Ada", None)
+            .await
+            .unwrap();
+
+        assert_eq!(resolved, id);
+        assert!(!is_new);
     }
 }

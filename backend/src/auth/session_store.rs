@@ -5,9 +5,16 @@ use tokio::sync::{RwLock, broadcast};
 use crate::auth::{Session, UserId};
 use crate::authz::GlobalRole;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SessionDelta {
-    RoleChanged { user_id: UserId, role: GlobalRole },
+    RoleChanged {
+        user_id: UserId,
+        role: GlobalRole,
+    },
+    DisplayNameChanged {
+        user_id: UserId,
+        display_name: String,
+    },
 }
 
 /// Stores current user sessions
@@ -59,5 +66,25 @@ impl SessionStore {
             }
         }
         let _ = self.tx.send(SessionDelta::RoleChanged { user_id, role });
+    }
+
+    /// Patches the cached `display_name` on every live session belonging to
+    /// `user_id`. There can be multiple sessions for the same `user_id`.
+    ///
+    /// This ensures that someone whose display name is updated doesn't need
+    /// to log out and back in to see it reflected in the frontend.
+    pub async fn update_display_name_for_user(&self, user_id: UserId, display_name: &str) {
+        {
+            let mut store = self.store.write().await;
+            for session in store.values_mut() {
+                if session.user_id == user_id {
+                    session.display_name = display_name.to_string();
+                }
+            }
+        }
+        let _ = self.tx.send(SessionDelta::DisplayNameChanged {
+            user_id,
+            display_name: display_name.to_string(),
+        });
     }
 }

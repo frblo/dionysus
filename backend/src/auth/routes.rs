@@ -11,7 +11,7 @@ use serde::Serialize;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::{AuthError, SessionDelta, UserId};
+use crate::auth::{AuthError, LoginOutcome, PendingLinkInfo, Profile, SessionDelta, UserId};
 use crate::authz::GlobalRole;
 use crate::{auth::session::AuthSession, state::AppState};
 
@@ -51,6 +51,30 @@ pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
     })
 }
 
+pub async fn profile(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+) -> Result<Json<Profile>, AuthError> {
+    Ok(Json(state.auth.profile(session.user_id).await?))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateDisplayName {
+    pub display_name: String,
+}
+
+pub async fn update_display_name(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+    Json(body): Json<UpdateDisplayName>,
+) -> Result<Json<Profile>, AuthError> {
+    state
+        .auth
+        .update_display_name(session.user_id, &body.display_name)
+        .await?;
+    Ok(Json(state.auth.profile(session.user_id).await?))
+}
+
 /// Informs the user when something has changed with their session.
 pub async fn sse(
     AuthSession(session): AuthSession,
@@ -63,6 +87,11 @@ pub async fn sse(
         let event = match res {
             Ok(SessionDelta::RoleChanged { user_id, .. }) if user_id == my_user_id => {
                 Event::default().event("role-changed").data("role-changed")
+            }
+            Ok(SessionDelta::DisplayNameChanged { user_id, .. }) if user_id == my_user_id => {
+                Event::default()
+                    .event("display-name-changed")
+                    .data("display-name-changed")
             }
             Ok(_) => return None,
             Err(BroadcastStreamRecvError::Lagged(n)) => {
@@ -79,14 +108,22 @@ pub async fn sse(
 #[derive(Deserialize)]
 pub struct LoginQuery {
     pub provider: String,
+    pub link_token: Option<String>,
 }
 
 pub async fn login(
     State(state): State<AppState>,
     Query(q): Query<LoginQuery>,
 ) -> Result<Redirect, AuthError> {
-    let url = state.auth.start_login(&q.provider).await?;
+    let url = state.auth.start_login(&q.provider, q.link_token).await?;
     Ok(Redirect::to(&url))
+}
+
+pub async fn link_info(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+) -> Result<Json<PendingLinkInfo>, AuthError> {
+    Ok(Json(state.auth.pending_link_info(&token).await?))
 }
 
 #[derive(Deserialize)]
@@ -101,17 +138,24 @@ pub async fn oidc_callback(
     Query(q): Query<CallbackQuery>,
     jar: CookieJar,
 ) -> Result<impl IntoResponse, AuthError> {
-    let session_id = state
+    let outcome = state
         .auth
         .finish_login(&provider, q.code, q.state, &state.authz)
         .await?;
 
-    let cookie = Cookie::build(("session", session_id))
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(axum_extra::extract::cookie::SameSite::Lax)
-        .build();
+    match outcome {
+        LoginOutcome::LoggedIn { session_id } => {
+            let cookie = Cookie::build(("session", session_id))
+                .path("/")
+                .http_only(true)
+                .secure(true)
+                .same_site(axum_extra::extract::cookie::SameSite::Lax)
+                .build();
 
-    Ok((jar.add(cookie), Redirect::to("/")))
+            Ok((jar.add(cookie), Redirect::to("/")))
+        }
+        LoginOutcome::LinkRequired { token, .. } => {
+            Ok((jar, Redirect::to(&format!("/link?token={token}"))))
+        }
+    }
 }

@@ -4,6 +4,7 @@
     ExclamationCircle,
     ShieldLock,
     QuestionCircle,
+    PersonCircle,
   } from "svelte-bootstrap-icons";
   import { sessionState } from "$lib/state/session.svelte";
 
@@ -28,6 +29,14 @@
         </button>
       </a>
     {/if}
+    <a href="/profile">
+      <button
+        class="p-2 text-gray-400 hover:text-white transition-colors"
+        title="Profile"
+      >
+        <PersonCircle />
+      </button>
+    </a>
     <a href="/help" target="_blank" rel="noreferrer">
       <button
         class="p-2 text-gray-400 hover:text-white transition-colors"

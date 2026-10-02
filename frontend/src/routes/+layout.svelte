@@ -22,6 +22,10 @@
       invalidate("dionysus:session");
     });
 
+    eventSource.addEventListener("display-name-changed", () => {
+      invalidate("dionysus:session");
+    });
+
     eventSource.addEventListener("resync", () => {
       invalidate("dionysus:session");
     });
