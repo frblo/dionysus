@@ -1,4 +1,5 @@
 mod error;
+mod hive;
 mod model;
 mod pg;
 mod policy;
