@@ -3,7 +3,6 @@ mod linking;
 mod oidc;
 mod routes;
 mod session;
-mod session_store;
 mod user_events;
 
 use std::sync::Arc;
@@ -32,8 +31,10 @@ use crate::ttl_store::TtlStore;
 pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
-pub use session_store::SessionStore;
 pub use user_events::{UserEvent, UserEvents};
+
+/// How long a login lasts before the user has to log in again.
+const SESSION_TTL: Duration = Duration::from_hours(24 * 7);
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -125,7 +126,8 @@ pub struct AuthManager {
     /// Keyed by an opaque link token handed to the browser in place of a
     /// session.
     links: TtlStore<String, PendingLink>,
-    sessions: SessionStore,
+    /// Live sessions, keyed by the session id in the browser cookie.
+    sessions: TtlStore<String, Session>,
     events: UserEvents,
     identity: IdentityStore,
     external_base_url: String,
@@ -142,13 +144,13 @@ impl AuthManager {
         let pending = TtlStore::new(Duration::from_mins(1));
         let links = TtlStore::new(Duration::from_mins(5));
 
-        let sessions = SessionStore::new();
+        let sessions = TtlStore::new(SESSION_TTL);
 
         let manager = Self {
             oidc: Arc::new(oidc),
             pending: pending.clone(),
             links: links.clone(),
-            sessions,
+            sessions: sessions.clone(),
             events: UserEvents::new(),
             identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
@@ -160,6 +162,7 @@ impl AuthManager {
                 interval.tick().await;
                 pending.gc().await;
                 links.gc().await;
+                sessions.gc().await;
             }
         });
 
@@ -176,7 +179,7 @@ impl AuthManager {
 
     #[tracing::instrument(skip_all)]
     pub async fn logout(&self, session_id: &str) {
-        self.sessions.remove(session_id).await;
+        self.sessions.take(session_id).await;
         tracing::info!("session logged out");
     }
 
