@@ -77,10 +77,7 @@ async fn list_users(
     let identities = state.auth.list_users().await?;
     let mut users = Vec::with_capacity(identities.len());
     for u in identities {
-        let subject = Actor {
-            id: u.id,
-            display_name: u.display_name.clone(),
-        };
+        let subject = Actor { id: u.id };
         let global_role = state.authz.global_role(&subject).await?;
         users.push(User {
             id: u.id,
@@ -115,15 +112,9 @@ async fn set_role(
         .get_user(user_id)
         .await?
         .ok_or(Error::UserNotFound)?;
-    let subject = Actor {
-        id: target.id,
-        display_name: target.display_name,
-    };
+    let subject = Actor { id: target.id };
 
     state.authz.set_global_role(&subject, payload.role).await?;
-    state
-        .auth
-        .update_session_role(subject.id, payload.role)
-        .await;
+    state.auth.events().role_changed(subject.id);
     Ok(())
 }

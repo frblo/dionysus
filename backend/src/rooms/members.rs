@@ -94,10 +94,7 @@ async fn add_member(
         .get_user(payload.user_id)
         .await?
         .ok_or(Error::UserNotFound)?;
-    let subject = Actor {
-        id: target.id,
-        display_name: target.display_name,
-    };
+    let subject = Actor { id: target.id };
 
     state
         .authz
@@ -129,10 +126,7 @@ async fn remove_member(
         .get_user(user_id)
         .await?
         .ok_or(Error::UserNotFound)?;
-    let subject = Actor {
-        id: target.id,
-        display_name: target.display_name,
-    };
+    let subject = Actor { id: target.id };
 
     state.authz.revoke_role(room_id, &subject).await?;
 

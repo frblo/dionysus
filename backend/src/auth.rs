@@ -4,6 +4,7 @@ mod oidc;
 mod routes;
 mod session;
 mod session_store;
+mod user_events;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,7 +32,8 @@ use crate::ttl_store::TtlStore;
 pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
-pub use session_store::{SessionDelta, SessionStore};
+pub use session_store::SessionStore;
+pub use user_events::{UserEvent, UserEvents};
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -124,6 +126,7 @@ pub struct AuthManager {
     /// session.
     links: TtlStore<String, PendingLink>,
     sessions: SessionStore,
+    events: UserEvents,
     identity: IdentityStore,
     external_base_url: String,
 }
@@ -146,6 +149,7 @@ impl AuthManager {
             pending: pending.clone(),
             links: links.clone(),
             sessions,
+            events: UserEvents::new(),
             identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
         };
@@ -166,8 +170,8 @@ impl AuthManager {
         self.sessions.get(session_id).await
     }
 
-    pub fn subscribe_sessions(&self) -> tokio::sync::broadcast::Receiver<SessionDelta> {
-        self.sessions.subscribe()
+    pub fn subscribe_events(&self) -> tokio::sync::broadcast::Receiver<UserEvent> {
+        self.events.subscribe()
     }
 
     #[tracing::instrument(skip_all)]
@@ -220,16 +224,13 @@ impl AuthManager {
         self.identity
             .update_display_name(user_id, display_name)
             .await?;
-        self.sessions
-            .update_display_name_for_user(user_id, display_name)
-            .await;
+        self.events.display_name_changed(user_id, display_name);
         Ok(())
     }
 
-    /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
-    /// in sync.
-    pub async fn update_session_role(&self, user_id: UserId, role: crate::authz::GlobalRole) {
-        self.sessions.update_role_for_user(user_id, role).await;
+    /// Handle for broadcasting [`UserEvent`]s from outside `auth`.
+    pub fn events(&self) -> UserEvents {
+        self.events.clone()
     }
 
     /// Starts a login OIDC round trip.
@@ -394,21 +395,14 @@ impl AuthManager {
             tracing::info!(user_id = %user_id, linked_provider_id = %link.new_provider_id, "account link confirmed");
         }
 
-        let actor = Actor {
-            id: user_id,
-            display_name: display_name.clone(),
-        };
+        let actor = Actor { id: user_id };
         if is_new {
             authz.on_user_created(&actor).await?;
         }
-        let global_role = authz.global_role(&actor).await?;
 
         let session_id = rand_str(64);
         self.sessions
-            .insert(
-                session_id.clone(),
-                Session::new(user_id, display_name, global_role),
-            )
+            .insert(session_id.clone(), Session::new(user_id))
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");
