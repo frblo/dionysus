@@ -9,7 +9,7 @@
 
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
-  import { yCollab } from "y-codemirror.next";
+  import { yCollab, ySyncAnnotation } from "y-codemirror.next";
 
   import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
@@ -119,6 +119,10 @@
           sceneScanner,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
+              const isRemote = update.transactions.some((tr) =>
+                tr.annotation(ySyncAnnotation),
+              );
+              if (isRemote) return;
               const head = update.state.selection.main.head;
               debouncedPreview(
                 update.state.doc.toString(),
