@@ -224,7 +224,7 @@ impl AuthManager {
         self.sessions.update_role_for_user(user_id, role).await;
     }
 
-    /// Starts a login oidc round trip.
+    /// Starts a login OIDC round trip.
     ///
     /// When `link_token` is given, this round trip confirms a pending
     /// account link rather than a plain login. The `provider_id` must

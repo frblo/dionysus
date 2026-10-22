@@ -42,7 +42,7 @@
   class="flex flex-col items-center justify-center min-h-screen bg-[#1e1e1e] text-gray-100 p-4"
 >
   <div class="text-center mb-12 max-w-md">
-    <h1 class="title-text">confirm it's you</h1>
+    <h1 class="title-text">Confirm it's you</h1>
     {#if info}
       <p class="subtitle">
         An account already exists for <strong>{info.masked_email}</strong>. Log
