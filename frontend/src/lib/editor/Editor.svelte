@@ -152,6 +152,10 @@
   });
 
   $effect(() => {
+    provider?.awareness.setLocalStateField("user", user);
+  });
+
+  $effect(() => {
     editor.scrollTick;
     jumpToLine(editor.targetLine);
   });

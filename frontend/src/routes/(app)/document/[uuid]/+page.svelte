@@ -52,7 +52,7 @@
 
   let editorRef = $state(<Editor | null>null);
 
-  const name = sessionState.current?.user.display_name;
+  const name = $derived(sessionState.current?.user.display_name);
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const roomId = page.data.roomInfo?.room_id;
