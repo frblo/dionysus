@@ -17,6 +17,7 @@
   import { galleryState, loadRoomList } from "$lib/state/gallery.svelte";
   import { sessionState } from "$lib/state/session.svelte";
   import type { RoomInfo } from "$lib/api/generated/RoomInfo";
+  import Settings from "$lib/editor/Settings.svelte";
 
   function openCreateModal() {
     galleryState.modalOpen = GalleryModals.Create;
@@ -96,6 +97,7 @@
       </button>
     {/if}
   </Sidebar>
+  <Settings />
 
   <main class="flex flex-1 overflow-auto bg-[#1e1e1e] p-6">
     <div
