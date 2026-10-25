@@ -5,6 +5,7 @@
     Gear,
     ShieldLock,
     QuestionCircle,
+    PersonCircle,
   } from "svelte-bootstrap-icons";
   import { sessionState } from "$lib/state/session.svelte";
   import { editorViewSettings, SidebarMenus } from "$lib/state/settings.svelte";
@@ -37,6 +38,14 @@
         </button>
       </a>
     {/if}
+    <a href="/profile">
+      <button
+        class="p-2 text-gray-400 hover:text-white transition-colors"
+        title="Profile"
+      >
+        <PersonCircle />
+      </button>
+    </a>
     <button
       class="p-2 text-gray-400 hover:text-white transition-colors"
       class:text-white={editorViewSettings.sidebarMenuOpen ===
