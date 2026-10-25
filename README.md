@@ -26,6 +26,34 @@ The mock OIDC provider's login form only creates a bare subject. To tests flows 
 
 Then log in with that subject. See `--help` for more details on how to use the script.
 
+### Testing with Hive
+
+An opt-in compose override runs a local Hive next to Dionysus, using the same mock OIDC provider.
+
+```sh
+docker compose -f compose.yml -f compose.hive.yml up -d
+```
+
+Hive requires a `name` claim, which the mock's login form doesn't provide, so register your test users first (here `alice` is just an example):
+
+```sh
+./scripts/seed_dev_user.py alice --name Alice --email alice@example.com
+```
+
+Set up Hive at <http://localhost:6869>:
+1. Log in through the `mock-oidc` as one of the seeded users, e.g. `alice`. The first user to log in becomes a Hive administrator.
+2. Follow the setup steps in [Hive config](#hive-config). Add your test users to the groups created.
+3. Copy the token secret (not its id) and recreate Dionysus with it:
+
+```sh
+HIVE_TOKEN=<secret> docker compose -f compose.yml -f compose.hive.yml up -d dionysus
+```
+
+Then log in to Dionysus at <http://localhost:8000> with the provider `dev` and one of your test users. Roles refresh every 5 seconds.
+
+> [!NOTE]
+> Hive's usernames must match `^[a-z0-9]{2,}$`, so only specify those as the subject in `mock-oidc`.
+
 ## Configuration
 
 ### General
@@ -93,6 +121,7 @@ DIONYSUS_OIDC__PROVIDERS__YOUR_OIDC__SCOPES__2="email"
 ```
 
 ### Hive config
+
 Optional. When set, global roles come from [Hive](https://github.com/datasektionen/hive) instead of the local database.
 
 | Setting | Required | Format |
@@ -106,10 +135,11 @@ Optional. When set, global roles come from [Hive](https://github.com/datasektion
 Setup in Hive:
 1. Create a system `dionysus`.
 2. Add the unscoped permissions `admin` and `user` to it.
-3. Assign them to the groups that should have them.
-4. Create an API token for the system and give it the permission `$hive:api-check-permissions`.
+3. Assign them to the groups that should have them (Create groups if needed).
+4. Create an API token for the system and save the token secret.
+5. Give the newly created API the permission `$hive:api-check-permissions` (Done from the Hive system panel).
 
-Users are matched by their subject at `hive.provider_id`, so they need to have logged in with that provider. Everyone else is a guest. Roles are changed in Hive, not in Dionysus, and take effect within `hive.cache_ttl_secs`. If Hive can't be reached, role lookups fail and Dionysus will not work properly.
+Users are matched by their subject at `hive.provider_id`, so they need to have logged in with that provider. Everyone else is a guest. Roles are only changeable in Hive, and take effect in Dionysus within `hive.cache_ttl_secs`. If Hive can't be reached role lookups fail and Dionysus will not work properly.
 
 ## Issues
 
