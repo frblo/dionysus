@@ -2,13 +2,22 @@
   import type { Snippet } from "svelte";
   import {
     ExclamationCircle,
+    Gear,
     ShieldLock,
     QuestionCircle,
     PersonCircle,
   } from "svelte-bootstrap-icons";
   import { sessionState } from "$lib/state/session.svelte";
+  import { editorViewSettings, SidebarMenus } from "$lib/state/settings.svelte";
 
   let { children }: { children?: Snippet } = $props();
+
+  function toggleSettingsMenu() {
+    editorViewSettings.sidebarMenuOpen =
+      editorViewSettings.sidebarMenuOpen === SidebarMenus.Settings
+        ? SidebarMenus.None
+        : SidebarMenus.Settings;
+  }
 </script>
 
 <aside
@@ -37,6 +46,15 @@
         <PersonCircle />
       </button>
     </a>
+    <button
+      class="p-2 text-gray-400 hover:text-white transition-colors"
+      class:text-white={editorViewSettings.sidebarMenuOpen ===
+        SidebarMenus.Settings}
+      title="User settings"
+      onclick={toggleSettingsMenu}
+    >
+      <Gear />
+    </button>
     <a href="/help" target="_blank" rel="noreferrer">
       <button
         class="p-2 text-gray-400 hover:text-white transition-colors"
