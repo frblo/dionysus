@@ -1,4 +1,4 @@
-//! [`RoleSource`] backed by Hive's permissions API.
+//! [`RoleSource`] backed by [Hive](https://github.com/datasektionen/hive)'s permissions API.
 use std::time::Duration;
 
 use async_trait::async_trait;
