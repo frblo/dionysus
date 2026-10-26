@@ -1,0 +1,54 @@
+# Opt-in override that runs a local Hive and points Dionysus at it, see README ("Testing with Hive").
+#   docker compose -f compose.yml -f compose.hive.yml up -d
+services:
+  hive-db:
+    image: docker.io/library/postgres:16
+    environment:
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+      POSTGRES_DB: hive
+    volumes:
+      - hive-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  oidc-mock:
+    ports:
+      # Hive's port, published here because Hive shares this container's network
+      - "127.0.0.1:6869:6869"
+
+  # The mock builds its URLs from the request Host header and Hive only has one issuer URL (unlike Dionysus).
+  # Sharing the mock's network makes http://localhost:9400 reach it from both Hive and the browser.
+  hive:
+    image: ghcr.io/datasektionen/hive:013b3b4
+    network_mode: "service:oidc-mock"
+    environment:
+      HIVE_OIDC_ISSUER_URL: http://localhost:9400
+      HIVE_OIDC_CLIENT_ID: dev-client
+      HIVE_OIDC_CLIENT_SECRET: dev-secret
+      HIVE_SECRET_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      HIVE_DB_URL: postgresql://hive:hive@hive-db:5432/hive
+      TZ: Europe/Stockholm
+    depends_on:
+      hive-db:
+        condition: service_healthy
+      oidc-mock:
+        condition: service_healthy
+
+  dionysus:
+    environment:
+      # Hive shares oidc-mock's network, so Dionysus reaches it under that name
+      DIONYSUS_HIVE__BASE_URL: http://oidc-mock:6869
+      DIONYSUS_HIVE__PROVIDER_ID: dev
+      DIONYSUS_HIVE__CACHE_TTL_SECS: "5"
+      # Created in Hive's UI, see README
+      DIONYSUS_HIVE__TOKEN: ${HIVE_TOKEN:-}
+    depends_on:
+      hive:
+        condition: service_started
+
+volumes:
+  hive-pgdata:

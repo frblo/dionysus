@@ -269,6 +269,23 @@ impl IdentityStore {
         Ok(rows.into_iter().map(|r| r.provider_id).collect())
     }
 
+    /// The user's subject at `provider_id`, if they have linked that provider.
+    pub async fn subject_for(
+        &self,
+        user_id: UserId,
+        provider_id: &str,
+    ) -> Result<Option<String>, Error> {
+        let row = sqlx::query!(
+            "SELECT subject FROM user_identities WHERE user_id = $1 AND provider_id = $2",
+            user_id.0,
+            provider_id,
+        )
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        Ok(row.map(|r| r.subject))
+    }
+
     /// Attach a new `(provider_id, subject)` identity to an existing user.
     ///
     /// Only meant to be called once ownership of both sides has already been
@@ -580,6 +597,34 @@ mod tests {
         providers.sort();
 
         assert_eq!(providers, vec!["github".to_string(), "google".to_string()]);
+    }
+
+    #[sqlx::test]
+    async fn subject_for_returns_the_subject_at_that_provider(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+        store.link_identity(id, "github", "xyz").await.unwrap();
+
+        assert_eq!(
+            store.subject_for(id, "github").await.unwrap().as_deref(),
+            Some("xyz")
+        );
+    }
+
+    #[sqlx::test]
+    async fn subject_for_returns_none_when_provider_not_linked(pool: sqlx::PgPool) {
+        let store = IdentityStore::new(Db::new(pool));
+
+        let (id, _) = store
+            .resolve_or_create("google", "abc", "Ada", None)
+            .await
+            .unwrap();
+
+        assert_eq!(store.subject_for(id, "github").await.unwrap(), None);
     }
 
     #[sqlx::test]

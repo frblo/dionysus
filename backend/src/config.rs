@@ -11,6 +11,7 @@ pub struct Config {
     pub database: Database,
     pub logging: Logging,
     pub oidc: Oidc,
+    pub hive: Option<Hive>,
 }
 
 impl Config {
@@ -59,6 +60,25 @@ pub struct Logging {
 pub struct Oidc {
     pub external_base_url: String,
     pub providers: HashMap<String, OidcProvider>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Hive {
+    pub base_url: String,
+    pub token: String,
+    pub provider_id: String,
+    #[serde(default = "default_hive_cache_ttl_secs")]
+    pub cache_ttl_secs: u64,
+    #[serde(default = "default_hive_timeout_secs")]
+    pub timeout_secs: u64,
+}
+
+fn default_hive_cache_ttl_secs() -> u64 {
+    60
+}
+
+fn default_hive_timeout_secs() -> u64 {
+    5
 }
 
 #[derive(Debug, Deserialize, Serialize)]

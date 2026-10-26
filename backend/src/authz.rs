@@ -1,4 +1,5 @@
 mod error;
+mod hive;
 mod model;
 mod pg;
 mod policy;
@@ -9,6 +10,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 pub use error::Error;
+pub use hive::HiveRoleSource;
 pub use model::{
     Actor, CollectionAction, Decision, GlobalRole, RoomAction, RoomMember, RoomRole, RoomScope,
 };

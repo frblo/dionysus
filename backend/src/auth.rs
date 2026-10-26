@@ -3,8 +3,7 @@ mod linking;
 mod oidc;
 mod routes;
 mod session;
-mod session_store;
-mod ttl_store;
+mod user_events;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,17 +20,21 @@ use rand::{Rng, distr::Alphanumeric};
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::auth::linking::{PendingLink, PendingLinkStore};
-use crate::auth::oidc::{OidcRegistry, PendingLogin, PendingLoginStore};
+use crate::auth::linking::PendingLink;
+use crate::auth::oidc::{OidcRegistry, PendingLogin};
 use crate::authz::{Actor, AuthzManager};
 use crate::config::Config;
 use crate::db::Db;
 use crate::state::AppState;
+use crate::ttl_store::TtlStore;
 
 pub use identity::{IdentityStore, User, UserId};
 pub use session::AuthSession;
 pub use session::Session;
-pub use session_store::{SessionDelta, SessionStore};
+pub use user_events::{UserEvent, UserEvents};
+
+/// How long a login lasts before the user has to log in again.
+const SESSION_TTL: Duration = Duration::from_hours(24 * 7);
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -113,9 +116,19 @@ pub struct Profile {
 #[derive(Clone)]
 pub struct AuthManager {
     oidc: Arc<OidcRegistry>,
-    pending: PendingLoginStore,
-    links: PendingLinkStore,
-    sessions: SessionStore,
+    /// Ongoing OIDC logins, keyed by their CSRF state token.
+    pending: TtlStore<String, PendingLogin>,
+    /// Logins whose verified email collided with an existing, different
+    /// account. Tracked until the user either confirms it's them (by logging
+    /// in again via one of that account's own providers) or the link expires
+    /// unconfirmed.
+    ///
+    /// Keyed by an opaque link token handed to the browser in place of a
+    /// session.
+    links: TtlStore<String, PendingLink>,
+    /// Live sessions, keyed by the session id in the browser cookie.
+    sessions: TtlStore<String, Session>,
+    events: UserEvents,
     identity: IdentityStore,
     external_base_url: String,
 }
@@ -128,16 +141,17 @@ impl AuthManager {
                 source: Box::new(e),
             })?;
 
-        let pending = PendingLoginStore::new(Duration::from_mins(1));
-        let links = PendingLinkStore::new(Duration::from_mins(5));
+        let pending = TtlStore::new(Duration::from_mins(1));
+        let links = TtlStore::new(Duration::from_mins(5));
 
-        let sessions = SessionStore::new();
+        let sessions = TtlStore::new(SESSION_TTL);
 
         let manager = Self {
             oidc: Arc::new(oidc),
             pending: pending.clone(),
             links: links.clone(),
-            sessions,
+            sessions: sessions.clone(),
+            events: UserEvents::new(),
             identity: IdentityStore::new(db),
             external_base_url: cfg.oidc.external_base_url.clone(),
         };
@@ -148,6 +162,7 @@ impl AuthManager {
                 interval.tick().await;
                 pending.gc().await;
                 links.gc().await;
+                sessions.gc().await;
             }
         });
 
@@ -158,13 +173,13 @@ impl AuthManager {
         self.sessions.get(session_id).await
     }
 
-    pub fn subscribe_sessions(&self) -> tokio::sync::broadcast::Receiver<SessionDelta> {
-        self.sessions.subscribe()
+    pub fn subscribe_events(&self) -> tokio::sync::broadcast::Receiver<UserEvent> {
+        self.events.subscribe()
     }
 
     #[tracing::instrument(skip_all)]
     pub async fn logout(&self, session_id: &str) {
-        self.sessions.remove(session_id).await;
+        self.sessions.take(session_id).await;
         tracing::info!("session logged out");
     }
 
@@ -212,16 +227,13 @@ impl AuthManager {
         self.identity
             .update_display_name(user_id, display_name)
             .await?;
-        self.sessions
-            .update_display_name_for_user(user_id, display_name)
-            .await;
+        self.events.display_name_changed(user_id, display_name);
         Ok(())
     }
 
-    /// Used to keep the session cached [`GlobalRole`](crate::authz::GlobalRole)
-    /// in sync.
-    pub async fn update_session_role(&self, user_id: UserId, role: crate::authz::GlobalRole) {
-        self.sessions.update_role_for_user(user_id, role).await;
+    /// Handle for broadcasting [`UserEvent`]s from outside `auth`.
+    pub fn events(&self) -> UserEvents {
+        self.events.clone()
     }
 
     /// Starts a login OIDC round trip.
@@ -386,21 +398,14 @@ impl AuthManager {
             tracing::info!(user_id = %user_id, linked_provider_id = %link.new_provider_id, "account link confirmed");
         }
 
-        let actor = Actor {
-            id: user_id,
-            display_name: display_name.clone(),
-        };
+        let actor = Actor { id: user_id };
         if is_new {
             authz.on_user_created(&actor).await?;
         }
-        let global_role = authz.global_role(&actor).await?;
 
         let session_id = rand_str(64);
         self.sessions
-            .insert(
-                session_id.clone(),
-                Session::new(user_id, display_name, global_role),
-            )
+            .insert(session_id.clone(), Session::new(user_id))
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");

@@ -10,7 +10,6 @@ use openidconnect::{
 };
 use thiserror::Error;
 
-use crate::auth::ttl_store::TtlStore;
 use crate::config;
 
 /// Errors that can happen during an OIDC login process
@@ -36,10 +35,6 @@ pub enum OidcError {
     #[error("unknown OIDC provider `{0}`")]
     UnknownProvider(String),
 }
-
-/// Tracks information about an ongoing OIDC login process, keyed by its CSRF
-/// state token.
-pub type PendingLoginStore = TtlStore<PendingLogin>;
 
 /// Contains the neccessary state for an OIDC login to be able to safely
 /// finish.

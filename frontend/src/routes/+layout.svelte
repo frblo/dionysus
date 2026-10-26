@@ -4,6 +4,10 @@
   import { invalidate } from "$app/navigation";
   import type { LayoutData } from "./$types";
   import { sessionState } from "$lib/state/session.svelte";
+  import type {
+    DisplayNameChangedEvent,
+    RoleChangedEvent,
+  } from "$lib/api/generated/UserEvents";
 
   let { data, children }: { data: LayoutData; children: any } = $props();
 
@@ -18,12 +22,15 @@
 
     const eventSource = new EventSource("/auth/sse");
 
-    eventSource.addEventListener("role-changed", () => {
-      invalidate("dionysus:session");
+    eventSource.addEventListener("role-changed", (event) => {
+      const { global_role }: RoleChangedEvent = JSON.parse(event.data);
+      if (sessionState.current) sessionState.current.global_role = global_role;
     });
 
-    eventSource.addEventListener("display-name-changed", () => {
-      invalidate("dionysus:session");
+    eventSource.addEventListener("display-name-changed", (event) => {
+      const { display_name }: DisplayNameChangedEvent = JSON.parse(event.data);
+      if (sessionState.current)
+        sessionState.current.user.display_name = display_name;
     });
 
     eventSource.addEventListener("resync", () => {

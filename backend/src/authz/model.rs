@@ -8,14 +8,12 @@ use crate::auth::{Session, UserId};
 #[derive(Debug, Clone)]
 pub struct Actor {
     pub id: UserId,
-    pub display_name: String,
 }
 
 impl From<&Session> for Actor {
     fn from(session: &Session) -> Self {
         Self {
             id: session.user_id,
-            display_name: session.display_name.clone(),
         }
     }
 }
@@ -95,7 +93,18 @@ impl std::str::FromStr for RoomRole {
 /// App-wide role, separate from room membership.
 ///
 /// [`Self::Admin`] >= [`Self::User`] >= [`Self::Guest`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Default,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 #[cfg_attr(test, ts(export, export_to = "GlobalRole.ts"))]
@@ -170,10 +179,9 @@ mod tests {
     #[test]
     fn actor_borrows_identity_from_session() {
         let id = UserId(Uuid::from_u128(1));
-        let session = Session::new(id, "Ada".to_string(), GlobalRole::User);
+        let session = Session::new(id);
         let actor = Actor::from(&session);
         assert_eq!(actor.id, id);
-        assert_eq!(actor.display_name, "Ada");
     }
 
     #[test]

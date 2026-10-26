@@ -222,10 +222,7 @@ mod tests {
         .unwrap()
         .user_id;
 
-        Actor {
-            id: UserId(id),
-            display_name: display_name.to_string(),
-        }
+        Actor { id: UserId(id) }
     }
 
     async fn make_room(pool: &sqlx::PgPool, room_name: &str) -> Uuid {
@@ -244,7 +241,6 @@ mod tests {
         let authz = PgAuthz::new(Db::new(pool));
         let actor = Actor {
             id: UserId(Uuid::new_v4()),
-            display_name: "Nobody".to_string(),
         };
 
         assert_eq!(authz.global_role(&actor).await.unwrap(), GlobalRole::Guest);

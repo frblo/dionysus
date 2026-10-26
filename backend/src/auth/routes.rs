@@ -11,8 +11,8 @@ use serde::Serialize;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
-use crate::auth::{AuthError, LoginOutcome, PendingLinkInfo, Profile, SessionDelta, UserId};
-use crate::authz::GlobalRole;
+use crate::auth::{AuthError, LoginOutcome, PendingLinkInfo, Profile, UserEvent, UserId};
+use crate::authz::{Actor, GlobalRole};
 use crate::{auth::session::AuthSession, state::AppState};
 
 #[derive(Serialize)]
@@ -41,14 +41,40 @@ pub struct MeUser {
     display_name: String,
 }
 
-pub async fn me(AuthSession(session): AuthSession) -> Json<Me> {
-    Json(Me {
+/// Payload of the `role-changed` SSE event.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UserEvents.ts"))]
+pub struct RoleChangedEvent {
+    global_role: GlobalRole,
+}
+
+/// Payload of the `display-name-changed` SSE event.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UserEvents.ts"))]
+pub struct DisplayNameChangedEvent {
+    display_name: String,
+}
+
+pub async fn me(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+) -> Result<Json<Me>, AuthError> {
+    let user = state
+        .auth
+        .get_user(session.user_id)
+        .await?
+        .ok_or(AuthError::UserNotFound)?;
+    let global_role = state.authz.global_role(&Actor::from(&session)).await?;
+
+    Ok(Json(Me {
         user: MeUser {
-            id: session.user_id,
-            display_name: session.display_name,
+            id: user.id,
+            display_name: user.display_name,
         },
-        global_role: session.global_role,
-    })
+        global_role,
+    }))
 }
 
 pub async fn profile(
@@ -81,25 +107,35 @@ pub async fn sse(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let my_user_id = session.user_id;
-    let rx_stream = BroadcastStream::new(state.auth.subscribe_sessions());
+    let rx_stream = BroadcastStream::new(state.auth.subscribe_events());
 
     let stream = rx_stream.filter_map(move |res| {
         let event = match res {
-            Ok(SessionDelta::RoleChanged { user_id, .. }) if user_id == my_user_id => {
-                Event::default().event("role-changed").data("role-changed")
-            }
-            Ok(SessionDelta::DisplayNameChanged { user_id, .. }) if user_id == my_user_id => {
+            Ok(UserEvent::RoleChanged { user_id, role }) if user_id == my_user_id => {
                 Event::default()
-                    .event("display-name-changed")
-                    .data("display-name-changed")
+                    .event("role-changed")
+                    .json_data(RoleChangedEvent { global_role: role })
             }
+            Ok(UserEvent::DisplayNameChanged {
+                user_id,
+                display_name,
+            }) if user_id == my_user_id => Event::default()
+                .event("display-name-changed")
+                .json_data(DisplayNameChangedEvent { display_name }),
             Ok(_) => return None,
             Err(BroadcastStreamRecvError::Lagged(n)) => {
                 tracing::warn!(missed_messages = n, "SSE recv lagged; requesting resync");
-                Event::default().event("resync").data("resync")
+                Ok(Event::default().event("resync").data("resync"))
             }
         };
-        Some(Ok(event))
+
+        match event {
+            Ok(event) => Some(Ok(event)),
+            Err(e) => {
+                tracing::error!(error = %e, "failed to serialize user event");
+                None
+            }
+        }
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
