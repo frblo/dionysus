@@ -52,11 +52,25 @@
 
     const vimExt = createVim(undoManager, () => surroundSelection("/*", "*/"));
     const trailingSpaces = createTrailingSpaces();
-    const debouncedPreview = debounce(async (text: string, line: number) => {
-      preview.generatePreview(text);
-      await tick();
-      preview.scrollToLine(line);
-    }, 50);
+
+    const debouncedPreview = debounce(
+      async (text: string, scrollOnPreview: boolean) => {
+        preview.generatePreview(text);
+
+        if (!scrollOnPreview || !view) return;
+
+        await tick();
+        const head = view.state.selection.main.head;
+        preview.scrollToLine(view.state.doc.lineAt(head).number);
+      },
+      50,
+    );
+
+    const handleYTextChange = (_event: Y.YTextEvent, tr: Y.Transaction) => {
+      debouncedPreview(ytext.toString(), tr.local);
+    };
+
+    ytext.observe(handleYTextChange);
 
     view = new EditorView({
       parent: editorEl,
@@ -117,15 +131,6 @@
           EditorView.contentAttributes.of({ spellcheck: "true" }),
           EditorState.readOnly.of(readOnly),
           sceneScanner,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              const head = update.state.selection.main.head;
-              debouncedPreview(
-                update.state.doc.toString(),
-                update.state.doc.lineAt(head).number,
-              );
-            }
-          }),
           basicSetup,
         ],
       }),
@@ -136,6 +141,7 @@
     });
 
     return () => {
+      ytext.unobserve(handleYTextChange);
       view?.destroy();
       provider?.destroy();
       ydoc.destroy();
