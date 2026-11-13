@@ -8,12 +8,15 @@ use tracing::Instrument;
 use uuid::Uuid;
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
-use yrs::{Doc, ReadTxn, Subscription, Transact};
+use yrs::{Doc, GetString, ReadTxn, Subscription, Transact};
 use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
 use crate::rooms::routes::RoomDelta;
 use crate::rooms::storage::{self, LoadUpdatesOptions, LogSeq, RoomInfo, Storage};
+
+/// Name of the Yjs text root used by the editor.
+const DOC_TEXT_NAME: &str = "codemirror";
 
 pub struct LiveRoom {
     pub bcast: Arc<BroadcastGroup>,
@@ -373,4 +376,20 @@ impl RoomManager {
 
         Ok(doc)
     }
+
+    pub async fn load_doc_text_at(
+        &self,
+        room_id: Uuid,
+        covered_through: LogSeq,
+    ) -> Result<String, Error> {
+        let doc = self.load_doc_at(room_id, covered_through).await?;
+        Ok(doc_text(&doc))
+    }
+}
+
+fn doc_text(doc: &Doc) -> String {
+    let txn = doc.transact();
+    txn.get_text(DOC_TEXT_NAME)
+        .map(|text| text.get_string(&txn))
+        .unwrap_or_default()
 }

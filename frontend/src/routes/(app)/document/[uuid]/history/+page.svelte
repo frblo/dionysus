@@ -1,41 +1,51 @@
 <script lang="ts">
-  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
 
-  import { Download, FileText } from "svelte-bootstrap-icons";
+  import { ArrowLeft, Download } from "svelte-bootstrap-icons";
 
-  import Editor from "$lib/editor/HistoryEditor.svelte";
-  import Outline from "$lib/editor/Outline.svelte";
+  import HistoryEditor from "$lib/editor/HistoryEditor.svelte";
   import Settings from "$lib/editor/Settings.svelte";
   import ExportMenu from "$lib/export/ExportMenu.svelte";
 
-  import {
-    editorViewSettings,
-    SidebarMenus,
-    PanelFocus,
-  } from "$lib/state/settings.svelte";
-  import { preview } from "$lib/state/preview.svelte";
+  import { editorViewSettings } from "$lib/state/settings.svelte";
   import Header from "$lib/common/Header.svelte";
   import Sidebar from "$lib/common/Sidebar.svelte";
+  import HistoryPanel from "$lib/history/HistoryPanel.svelte";
+  import { getVersion, type VersionEntry } from "$lib/history/api";
 
-  let editorRef = $state(<Editor | null>null);
+  let editorRef = $state(<HistoryEditor | null>null);
 
   const roomId = page.data.roomInfo?.room_id;
+  const versions: VersionEntry[] = page.data.versions;
 
-  const editorWidth = $derived(
-    editorViewSettings.panelFocus === PanelFocus.EditorOnly
-      ? "100%"
-      : editorViewSettings.panelFocus === PanelFocus.PreviewOnly
-        ? "0%"
-        : "50%",
-  );
+  let selectedSeq = $state<number | null>(page.data.initialSeq);
+  let displayedSeq = $state<number | null>(page.data.initialSeq);
+  let content = $state(page.data.initialVersion);
+  let loading = $state(false);
+  let error = $state<string | null>(null);
+  let latestRequest = 0;
 
-  function toggleSidebarMenu(menu: SidebarMenus) {
-    editorViewSettings.sidebarMenuOpen =
-      editorViewSettings.sidebarMenuOpen === menu ? SidebarMenus.None : menu;
+  async function selectVersion(seq: number) {
+    if (!roomId || seq === selectedSeq) return;
+
+    selectedSeq = seq;
+    const request = ++latestRequest;
+    loading = true;
+    error = null;
+
+    try {
+      const version = await getVersion(fetch, roomId, seq);
+      if (request !== latestRequest) return;
+      content = version;
+      displayedSeq = seq;
+    } catch (e) {
+      if (request !== latestRequest) return;
+      error = e instanceof Error ? e.message : "Failed to load version";
+      selectedSeq = displayedSeq;
+    } finally {
+      if (request === latestRequest) loading = false;
+    }
   }
-
-  afterNavigate(() => preview.reset());
 </script>
 
 <svelte:head>
@@ -44,23 +54,24 @@
 
 <Header title="{page.data.roomInfo?.room_name} history">
   {#snippet leftChildren()}
+    {#if roomId}
+      <a
+        href="/document/{roomId}"
+        class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8 flex items-center gap-1.5"
+        title="Back to editor"
+      >
+        <ArrowLeft />
+        Editor
+      </a>
+    {/if}
     <p class="text-sm font-medium text-gray-400 truncate">READ ONLY</p>
   {/snippet}
-
-  <select
-    class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium bg-[#252526] hover:bg-[#3c3c3c] transition h-8 cursor-pointer"
-    bind:value={editorViewSettings.panelFocus}
-  >
-    <option value={PanelFocus.Both}>Split</option>
-    <option value={PanelFocus.EditorOnly}>Editor only</option>
-    <option value={PanelFocus.PreviewOnly}>Preview only</option>
-  </select>
 
   <button
     class="px-3 py-1 rounded border border-gray-600 text-gray-400 text-xs font-medium hover:bg-[#3c3c3c] transition h-8"
     onclick={() =>
       (editorViewSettings.exportMenuOpen = !editorViewSettings.exportMenuOpen)}
-    title="Export"
+    title="Export this version"
   >
     <Download />
   </button>
@@ -69,28 +80,23 @@
 </Header>
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
-  <Sidebar>
-    <button
-      class="p-2 text-gray-400 hover:text-white transition-colors"
-      class:text-white={editorViewSettings.sidebarMenuOpen ===
-        SidebarMenus.Outline}
-      title="Document outline"
-      onclick={() => toggleSidebarMenu(SidebarMenus.Outline)}
-    >
-      <FileText />
-    </button>
-  </Sidebar>
-  <Outline {editorRef} />
+  <Sidebar />
+  <HistoryPanel {versions} {selectedSeq} {loading} onSelect={selectVersion} />
   <Settings />
 
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">
-    <section
-      class="flex flex-col overflow-hidden transition-all duration-200 border-r border-gray-700"
-      style="width: {editorWidth}"
-    >
-      <div class="flex-1 overflow-auto">
-        <Editor bind:this={editorRef} room={roomId} />
+    <div class="flex-1 overflow-auto">
+      <div class="mx-auto w-full max-w-4xl px-6 py-4">
+        {#if error}
+          <div
+            class="mb-3 rounded border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300"
+          >
+            {error}
+          </div>
+        {/if}
+
+        <HistoryEditor bind:this={editorRef} {content} />
       </div>
-    </section>
+    </div>
   </main>
 </div>
