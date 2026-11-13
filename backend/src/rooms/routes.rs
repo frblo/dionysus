@@ -321,12 +321,12 @@ async fn get_document_at(
 
     ensure_can_view(&actor, room_id, &state.authz).await?;
 
-    let doc = state
+    let content = state
         .rooms
-        .load_doc_at(room_id, payload.covered_through)
+        .load_doc_text_at(room_id, payload.covered_through)
         .await?;
 
-    Ok(Json(doc.to_string()))
+    Ok(Json(content))
 }
 
 /// Deny manually mapped to not found as to not reveal that a room exists
