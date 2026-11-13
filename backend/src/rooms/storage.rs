@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Duration;
 use uuid::Uuid;
 
 use crate::rooms::error::Error;
@@ -30,6 +31,14 @@ pub struct Snapshot {
 pub struct SnapshotInfo {
     pub covered_through: LogSeq,
     pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "UpdateInfo.ts"))]
+pub struct UpdateInfo {
+    pub covered_through: LogSeq,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -119,4 +128,12 @@ pub trait Storage: Send + Sync + 'static {
 
     /// List available snapshots for the room.
     async fn list_snapshots(&self, room_id: Uuid) -> Result<Vec<SnapshotInfo>, Error>;
+
+    /// List room updates grouped together by some `interval`, so that all updates which occurred
+    /// within said `interval` is represented by the last one.
+    async fn list_grouped_updates(
+        &self,
+        room_id: Uuid,
+        interval: Duration,
+    ) -> Result<Vec<UpdateInfo>, Error>;
 }
