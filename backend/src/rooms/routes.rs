@@ -2,7 +2,7 @@ use std::{collections::HashMap, convert::Infallible};
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{
         IntoResponse, Sse,
@@ -10,6 +10,7 @@ use axum::{
     },
     routing::{delete, get, post},
 };
+use chrono::Duration;
 use futures_util::Stream;
 use tokio_stream::{
     StreamExt,
@@ -20,7 +21,10 @@ use uuid::Uuid;
 use crate::{
     auth::AuthSession,
     authz::{self, Actor, AuthzManager, CollectionAction, RoomAction, RoomRole, RoomScope},
-    rooms::{self, storage::RoomInfo as StorageRoomInfo},
+    rooms::{
+        self,
+        storage::{LogSeq, RoomInfo as StorageRoomInfo, UpdateInfo},
+    },
     state::AppState,
 };
 
@@ -32,6 +36,8 @@ pub fn router() -> Router<AppState> {
         .route("/create/{room_name}", post(create))
         .route("/delete/{room_id}", delete(remove))
         .route("/sse", get(sse_handler))
+        .route("/list_updates/{room_id}", get(list_updates))
+        .route("/version_at/{room_id}", get(get_document_at))
         .merge(crate::rooms::members::router())
 }
 
@@ -210,17 +216,7 @@ async fn room_info(
 ) -> Result<Json<RoomInfo>, rooms::Error> {
     let actor = Actor::from(&session);
 
-    // Deny manually mapped to not found as to not reveal that a room exists
-    // to someone who can't view it.
-    match state
-        .authz
-        .require_room(&actor, RoomAction::View, room_id)
-        .await
-    {
-        Ok(()) => {}
-        Err(authz::Error::Denied) => return Err(rooms::Error::NotFound),
-        Err(e) => return Err(e.into()),
-    }
+    ensure_can_view(&actor, room_id, &state.authz).await?;
 
     let role = state.authz.role_in_room(room_id, &actor).await?;
     match state.rooms.room_info(room_id).await? {
@@ -293,6 +289,58 @@ async fn remove(
     state.rooms.delete_room(room_id).await?;
     let _ = state.rooms.gallery_tx.send(RoomDelta::Removed(room_id));
     Ok(())
+}
+
+async fn list_updates(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+) -> Result<Json<Vec<UpdateInfo>>, rooms::Error> {
+    let actor = Actor::from(&session);
+
+    ensure_can_view(&actor, room_id, &state.authz).await?;
+
+    const INTERVAL: Duration = Duration::minutes(5);
+
+    let updates = state.rooms.list_updates(room_id, INTERVAL).await?;
+    Ok(Json(updates))
+}
+
+#[derive(serde::Deserialize)]
+struct GetUpdate {
+    covered_through: LogSeq,
+}
+
+async fn get_document_at(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+    Query(payload): Query<GetUpdate>,
+) -> Result<Json<String>, rooms::Error> {
+    let actor = Actor::from(&session);
+
+    ensure_can_view(&actor, room_id, &state.authz).await?;
+
+    let doc = state
+        .rooms
+        .load_doc_at(room_id, payload.covered_through)
+        .await?;
+
+    Ok(Json(doc.to_string()))
+}
+
+/// Deny manually mapped to not found as to not reveal that a room exists
+/// to someone who can't view it.
+async fn ensure_can_view(
+    actor: &Actor,
+    room_id: Uuid,
+    authz: &AuthzManager,
+) -> Result<(), rooms::Error> {
+    match authz.require_room(&actor, RoomAction::View, room_id).await {
+        Ok(()) => Ok(()),
+        Err(authz::Error::Denied) => return Err(rooms::Error::NotFound),
+        Err(e) => return Err(e.into()),
+    }
 }
 
 impl From<authz::Error> for rooms::Error {

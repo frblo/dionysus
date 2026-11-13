@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::{collections::HashMap, sync::Arc};
 
+use chrono::Duration;
 use tokio::sync::broadcast;
 use tokio::sync::{RwLock, mpsc, watch};
 use tracing::Instrument;
@@ -12,7 +13,7 @@ use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
 use crate::rooms::routes::RoomDelta;
-use crate::rooms::storage::{self, LoadUpdatesOptions, RoomInfo, Storage};
+use crate::rooms::storage::{self, LoadUpdatesOptions, LogSeq, RoomInfo, Storage};
 
 pub struct LiveRoom {
     pub bcast: Arc<BroadcastGroup>,
@@ -142,6 +143,15 @@ impl RoomManager {
     /// Gets room info
     pub async fn room_info(&self, room_id: Uuid) -> Result<Option<storage::RoomInfo>, Error> {
         self.storage.get_room_info(room_id).await
+    }
+
+    /// Gets room updates
+    pub async fn list_updates(
+        &self,
+        room_id: Uuid,
+        interval: Duration,
+    ) -> Result<Vec<storage::UpdateInfo>, Error> {
+        self.storage.list_grouped_updates(room_id, interval).await
     }
 
     /// Gets the [`LiveRoom`] for the room if it exists in memory
@@ -309,6 +319,46 @@ impl RoomManager {
                 LoadUpdatesOptions {
                     from: Some(start_from),
                     ..Default::default()
+                },
+            )
+            .await?;
+
+        {
+            let mut txn = doc.transact_mut();
+            for u in updates {
+                let update = yrs::Update::decode_v1(&u.bytes)?;
+                txn.apply_update(update);
+            }
+        }
+
+        Ok(doc)
+    }
+
+    pub async fn load_doc_at(&self, room_id: Uuid, covered_through: LogSeq) -> Result<Doc, Error> {
+        let doc = Doc::new();
+        let snap = self
+            .storage
+            .load_snapshot_best(room_id, Some(covered_through))
+            .await?;
+
+        let start_from = if let Some(s) = snap {
+            // Apply snapshot
+            let mut txn = doc.transact_mut();
+            let update = yrs::Update::decode_v1(&s.bytes)?;
+            txn.apply_update(update);
+
+            s.covered_through + 1
+        } else {
+            1
+        };
+
+        let updates = self
+            .storage
+            .load_updates(
+                room_id,
+                LoadUpdatesOptions {
+                    from: Some(start_from),
+                    to: Some(covered_through),
                 },
             )
             .await?;
