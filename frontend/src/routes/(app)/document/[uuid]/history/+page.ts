@@ -13,14 +13,18 @@ export const load: PageLoad = async ({ params, fetch }) => {
 
   const roomInfo: RoomInfo = await roomInfoResponse.json();
   const latest = versions[0] ?? null;
-  const initialVersion = latest
-    ? await getVersion(fetch, roomId, latest.seq)
-    : "";
+  const previous = versions[1] ?? null;
+  const [initialVersion, initialPreviousVersion] = await Promise.all([
+    latest ? getVersion(fetch, roomId, latest.seq) : Promise.resolve(""),
+    previous ? getVersion(fetch, roomId, previous.seq) : Promise.resolve(null),
+  ]);
 
   return {
     roomInfo,
     versions,
     initialSeq: latest?.seq ?? null,
     initialVersion,
+    initialPreviousSeq: previous?.seq ?? null,
+    initialPreviousVersion,
   };
 };
