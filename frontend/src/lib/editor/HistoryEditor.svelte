@@ -8,7 +8,7 @@
   import { EditorState, type Extension } from "@codemirror/state";
   import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
-  import { setVimEnabled } from "$lib/editor/vim-setup";
+  import { createBasicVim, setVimEnabled } from "$lib/editor/vim-setup";
   import { userSettings } from "$lib/state/settings.svelte";
   import {
     createTrailingSpaces,
@@ -29,6 +29,8 @@
   let renderedContent: string | null = null;
   let renderedPreviousContent: string | null = null;
 
+  const vimExt = createBasicVim();
+
   function createView(currentContent: string, previous: string | null) {
     view?.destroy();
 
@@ -36,6 +38,7 @@
     const extensions: Extension[] = [
       fountain(),
       syntaxHighlighting(fountainHighlightStyle),
+      vimExt,
       basicDark,
       trailingSpaces,
       EditorView.lineWrapping,

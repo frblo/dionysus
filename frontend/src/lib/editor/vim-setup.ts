@@ -41,6 +41,10 @@ export function createVim(
   return vimCompartment.of(vim());
 }
 
+export function createBasicVim() {
+  return vimCompartment.of(vim());
+}
+
 export function setVimEnabled(view: EditorView, enabled: boolean) {
   view.dispatch({
     effects: vimCompartment.reconfigure(enabled ? vim() : []),
