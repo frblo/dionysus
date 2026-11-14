@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { unifiedMergeView } from "@codemirror/merge";
   import { syntaxHighlighting } from "@codemirror/language";
   import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
   import { basicSetup } from "codemirror";
   import { EditorView } from "@codemirror/view";
-  import { EditorState } from "@codemirror/state";
+  import { EditorState, type Extension } from "@codemirror/state";
   import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
 
   import { setVimEnabled } from "$lib/editor/vim-setup";
@@ -14,29 +15,49 @@
     setTrailingSpacesEnabled,
   } from "$lib/editor/trailing-spaces";
 
-  let { content = "" } = $props();
+  let {
+    content = "",
+    previousContent = null,
+  }: {
+    content?: string;
+    previousContent?: string | null;
+  } = $props();
 
   let editorEl: HTMLDivElement;
 
   let view: EditorView | null = null;
+  let renderedContent: string | null = null;
+  let renderedPreviousContent: string | null = null;
 
-  onMount(() => {
+  function createView(currentContent: string, previous: string | null) {
+    view?.destroy();
+
     const trailingSpaces = createTrailingSpaces();
+    const extensions: Extension[] = [
+      fountain(),
+      syntaxHighlighting(fountainHighlightStyle),
+      basicDark,
+      trailingSpaces,
+      EditorView.lineWrapping,
+      EditorView.contentAttributes.of({ spellcheck: "true" }),
+      EditorState.readOnly.of(true),
+      basicSetup,
+    ];
+
+    if (previous !== null) {
+      extensions.push(
+        unifiedMergeView({
+          original: previous,
+          mergeControls: false,
+        }),
+      );
+    }
 
     view = new EditorView({
       parent: editorEl,
       state: EditorState.create({
-        doc: content,
-        extensions: [
-          fountain(),
-          syntaxHighlighting(fountainHighlightStyle),
-          basicDark,
-          trailingSpaces,
-          EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ spellcheck: "true" }),
-          EditorState.readOnly.of(true),
-          basicSetup,
-        ],
+        doc: currentContent,
+        extensions,
       }),
     });
 
@@ -46,6 +67,13 @@
       userSettings.current.highlighTrailingSpacesEnabled,
     );
 
+    renderedContent = currentContent;
+    renderedPreviousContent = previous;
+  }
+
+  onMount(() => {
+    createView(content, previousContent);
+
     return () => {
       view?.destroy();
       view = null;
@@ -54,15 +82,14 @@
 
   $effect(() => {
     if (!view) return;
+    if (
+      content === renderedContent &&
+      previousContent === renderedPreviousContent
+    ) {
+      return;
+    }
 
-    const nextContent = content;
-    if (view.state.doc.toString() === nextContent) return;
-
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: nextContent },
-    });
-    view.scrollDOM.scrollTop = 0;
-    view.scrollDOM.scrollLeft = 0;
+    createView(content, previousContent);
   });
 
   $effect(() => {

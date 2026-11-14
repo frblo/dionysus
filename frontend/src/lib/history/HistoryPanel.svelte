@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ClockHistory } from "svelte-bootstrap-icons";
   import type { VersionEntry } from "$lib/history/api";
+  import { formatVersionTimestamp } from "$lib/history/format";
 
   let {
     versions,
@@ -13,13 +14,6 @@
     loading?: boolean;
     onSelect: (seq: number) => void;
   } = $props();
-
-  function formatTimestamp(value: string) {
-    return new Date(value).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  }
 </script>
 
 <aside
@@ -59,7 +53,7 @@
                 ? 'text-white'
                 : 'text-gray-300'}"
             >
-              {formatTimestamp(version.createdAt)}
+              {formatVersionTimestamp(version.createdAt)}
             </time>
 
             {#if index === 0}
@@ -70,9 +64,6 @@
               </span>
             {/if}
           </div>
-          <span class="mt-1 block text-[11px] text-gray-500"
-            >Version {version.seq}</span
-          >
         </button>
       {/each}
     {/if}

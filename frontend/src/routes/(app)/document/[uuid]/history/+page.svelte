@@ -12,21 +12,58 @@
   import Sidebar from "$lib/common/Sidebar.svelte";
   import HistoryPanel from "$lib/history/HistoryPanel.svelte";
   import { getVersion, type VersionEntry } from "$lib/history/api";
+  import { formatVersionTimestamp } from "$lib/history/format";
 
   let editorRef = $state(<HistoryEditor | null>null);
 
   const roomId = page.data.roomInfo?.room_id;
   const versions: VersionEntry[] = page.data.versions;
 
+  const versionCache = new Map<number, string>();
+  if (page.data.initialSeq !== null) {
+    versionCache.set(page.data.initialSeq, page.data.initialVersion);
+  }
+  if (
+    page.data.initialPreviousSeq !== null &&
+    page.data.initialPreviousVersion !== null
+  ) {
+    versionCache.set(
+      page.data.initialPreviousSeq,
+      page.data.initialPreviousVersion,
+    );
+  }
+
   let selectedSeq = $state<number | null>(page.data.initialSeq);
   let displayedSeq = $state<number | null>(page.data.initialSeq);
   let content = $state(page.data.initialVersion);
+  let previousContent = $state<string | null>(page.data.initialPreviousVersion);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let latestRequest = 0;
 
+  const displayedIndex = $derived(
+    versions.findIndex((version) => version.seq === displayedSeq),
+  );
+  const previousVersion = $derived(
+    displayedIndex >= 0 ? (versions[displayedIndex + 1] ?? null) : null,
+  );
+
+  async function loadVersion(seq: number): Promise<string> {
+    const cached = versionCache.get(seq);
+    if (cached !== undefined) return cached;
+
+    if (!roomId) throw new Error("Missing room id");
+
+    const version = await getVersion(fetch, roomId, seq);
+    versionCache.set(seq, version);
+    return version;
+  }
+
   async function selectVersion(seq: number) {
     if (!roomId || seq === selectedSeq) return;
+
+    const index = versions.findIndex((version) => version.seq === seq);
+    const previous = index >= 0 ? (versions[index + 1] ?? null) : null;
 
     selectedSeq = seq;
     const request = ++latestRequest;
@@ -34,9 +71,14 @@
     error = null;
 
     try {
-      const version = await getVersion(fetch, roomId, seq);
+      const [version, previousVersionContent] = await Promise.all([
+        loadVersion(seq),
+        previous ? loadVersion(previous.seq) : Promise.resolve(null),
+      ]);
       if (request !== latestRequest) return;
+
       content = version;
+      previousContent = previousVersionContent;
       displayedSeq = seq;
     } catch (e) {
       if (request !== latestRequest) return;
@@ -95,7 +137,20 @@
           </div>
         {/if}
 
-        <HistoryEditor bind:this={editorRef} {content} />
+        {#if displayedSeq !== null}
+          <p class="mb-2 text-xs text-gray-500">
+            {#if previousVersion}
+              Changes since
+              <time datetime={previousVersion.createdAt}>
+                {formatVersionTimestamp(previousVersion.createdAt)}
+              </time>
+            {:else}
+              First recorded version — no previous version to compare.
+            {/if}
+          </p>
+        {/if}
+
+        <HistoryEditor bind:this={editorRef} {content} {previousContent} />
       </div>
     </div>
   </main>
