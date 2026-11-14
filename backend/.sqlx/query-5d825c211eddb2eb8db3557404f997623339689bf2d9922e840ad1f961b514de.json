@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH latest AS (\n                SELECT\n                    max(seq) AS seq\n                FROM\n                    room_updates\n                WHERE\n                    room_id = $1\n                GROUP BY\n                    date_bin($2::interval, created_at, TIMESTAMPTZ 'epoch')\n            )\n            SELECT\n                u.seq AS \"covered_through!\",\n                u.created_at AS \"created_at!\"\n            FROM\n                room_updates u\n                JOIN latest l ON l.seq = u.seq\n            WHERE\n                u.room_id = $1\n            ORDER BY\n                u.seq ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "covered_through!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Interval"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5d825c211eddb2eb8db3557404f997623339689bf2d9922e840ad1f961b514de"
+}
