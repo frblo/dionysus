@@ -8,4 +8,5 @@ pub struct PendingLink {
     pub subject: String,
     pub email: String,
     pub target_user_id: UserId,
+    pub next: Option<String>,
 }

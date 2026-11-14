@@ -48,6 +48,9 @@ pub struct PendingLogin {
     /// Contains the token of the [`PendingLink`](crate::auth::linking::PendingLink)
     /// it's confirming.
     pub linking: Option<String>,
+    /// Where the user wants to go after logging in. Already sanitized to an
+    /// in-app path.
+    pub next: Option<String>,
 }
 
 /// A static registry of the [`OidcProvider`]s available.
