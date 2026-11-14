@@ -36,3 +36,15 @@ export async function getVersion(
 
   return response.json();
 }
+
+export async function restoreVersion(
+  fetcher: Fetch,
+  roomId: string,
+  seq: number,
+): Promise<void> {
+  const response = await fetcher(
+    `/api/rooms/restore/${roomId}?covered_through=${seq}`,
+    { method: "POST" },
+  );
+  if (!response.ok) throw new Error("Failed to restore document version");
+}
