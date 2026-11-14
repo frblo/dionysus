@@ -94,7 +94,7 @@
   <title>{page.data.roomInfo?.room_name} history - Dionysus</title>
 </svelte:head>
 
-<Header title="{page.data.roomInfo?.room_name} history">
+<Header title="{page.data.roomInfo?.room_name} - history">
   {#snippet leftChildren()}
     {#if roomId}
       <a
@@ -145,7 +145,7 @@
                 {formatVersionTimestamp(previousVersion.createdAt)}
               </time>
             {:else}
-              First recorded version — no previous version to compare.
+              First recorded version - no previous version to compare.
             {/if}
           </p>
         {/if}
