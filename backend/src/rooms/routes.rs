@@ -329,8 +329,8 @@ async fn get_document_at(
     Ok(Json(content))
 }
 
-/// Deny manually mapped to not found as to not reveal that a room exists
-/// to someone who can't view it.
+/// Maps `[authz::Error::Denied]` to `[rooms::Error::NotFound]` as to
+/// not reveal that a room exists to someone who can't view it.
 async fn ensure_can_view(
     actor: &Actor,
     room_id: Uuid,
