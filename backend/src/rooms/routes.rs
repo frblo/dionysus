@@ -38,6 +38,7 @@ pub fn router() -> Router<AppState> {
         .route("/sse", get(sse_handler))
         .route("/list_updates/{room_id}", get(list_updates))
         .route("/version_at/{room_id}", get(get_document_at))
+        .route("/restore/{room_id}", post(restore_version))
         .merge(crate::rooms::members::router())
 }
 
@@ -327,6 +328,27 @@ async fn get_document_at(
         .await?;
 
     Ok(Json(content))
+}
+
+async fn restore_version(
+    AuthSession(session): AuthSession,
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+    Query(payload): Query<GetUpdate>,
+) -> Result<StatusCode, rooms::Error> {
+    let actor = Actor::from(&session);
+
+    state
+        .authz
+        .require_room(&actor, RoomAction::Edit, room_id)
+        .await?;
+
+    state
+        .rooms
+        .restore_version(room_id, payload.covered_through)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Maps `[authz::Error::Denied]` to `[rooms::Error::NotFound]` as to

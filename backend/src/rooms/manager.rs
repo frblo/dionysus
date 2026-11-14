@@ -8,7 +8,7 @@ use tracing::Instrument;
 use uuid::Uuid;
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
-use yrs::{Doc, GetString, ReadTxn, Subscription, Transact};
+use yrs::{Doc, GetString, ReadTxn, Subscription, Text, Transact, WriteTxn};
 use yrs_axum::{AwarenessRef, broadcast::BroadcastGroup};
 
 use crate::rooms::error::Error;
@@ -384,6 +384,49 @@ impl RoomManager {
     ) -> Result<String, Error> {
         let doc = self.load_doc_at(room_id, covered_through).await?;
         Ok(doc_text(&doc))
+    }
+
+    /// Replaces the live document content with the text of the version at
+    /// `covered_through`, without restoring the update log.
+    #[tracing::instrument(skip_all, fields(room_id = %room_id, covered_through))]
+    pub async fn restore_version(
+        &self,
+        room_id: Uuid,
+        covered_through: LogSeq,
+    ) -> Result<(), Error> {
+        let Some(info) = self.storage.get_room_info(room_id).await? else {
+            return Err(Error::NotFound);
+        };
+        if covered_through > info.last_seq {
+            return Err(Error::InvalidArgument(format!(
+                "covered_through {covered_through} is beyond latest update {}",
+                info.last_seq
+            )));
+        }
+
+        let content = self.load_doc_text_at(room_id, covered_through).await?;
+        let room = self.connect(room_id).await?;
+
+        let result = async {
+            {
+                let awareness = room.awareness.write().await;
+                let mut txn = awareness.doc().transact_mut();
+                let text = txn.get_or_insert_text(DOC_TEXT_NAME);
+                let len = text.len(&txn);
+                if len > 0 {
+                    text.remove_range(&mut txn, 0, len);
+                }
+                text.insert(&mut txn, 0, &content);
+            }
+
+            // Make sure the restore update has been appended before reporting success.
+            room.wait_for_drain().await;
+            Ok(())
+        }
+        .await;
+
+        self.disconnect(room_id).await;
+        result
     }
 }
 
