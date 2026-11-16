@@ -5,6 +5,7 @@
   import {
     Download,
     FileText,
+    ClockHistory,
     BoxArrowInDownRight,
     ArrowCounterclockwise,
     ArrowClockwise,
@@ -189,6 +190,13 @@
     >
       <FileText />
     </button>
+    {#if roomId}
+      <a href="/document/{roomId}/history" title="Version history">
+        <button class="p-2 text-gray-400 hover:text-white transition-colors">
+          <ClockHistory />
+        </button>
+      </a>
+    {/if}
   </Sidebar>
   <Outline {editorRef} />
   <Settings />
