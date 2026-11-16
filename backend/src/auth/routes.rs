@@ -145,13 +145,17 @@ pub async fn sse(
 pub struct LoginQuery {
     pub provider: String,
     pub link_token: Option<String>,
+    pub next: Option<String>,
 }
 
 pub async fn login(
     State(state): State<AppState>,
     Query(q): Query<LoginQuery>,
 ) -> Result<Redirect, AuthError> {
-    let url = state.auth.start_login(&q.provider, q.link_token).await?;
+    let url = state
+        .auth
+        .start_login(&q.provider, q.link_token, q.next)
+        .await?;
     Ok(Redirect::to(&url))
 }
 
@@ -180,7 +184,7 @@ pub async fn oidc_callback(
         .await?;
 
     match outcome {
-        LoginOutcome::LoggedIn { session_id } => {
+        LoginOutcome::LoggedIn { session_id, next } => {
             let cookie = Cookie::build(("session", session_id))
                 .path("/")
                 .http_only(true)
@@ -188,7 +192,7 @@ pub async fn oidc_callback(
                 .same_site(axum_extra::extract::cookie::SameSite::Lax)
                 .build();
 
-            Ok((jar.add(cookie), Redirect::to("/")))
+            Ok((jar.add(cookie), Redirect::to(&next)))
         }
         LoginOutcome::LinkRequired { token, .. } => {
             Ok((jar, Redirect::to(&format!("/link?token={token}"))))

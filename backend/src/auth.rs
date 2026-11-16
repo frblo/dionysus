@@ -79,8 +79,9 @@ pub enum AuthError {
 #[derive(Debug)]
 pub enum LoginOutcome {
     /// A normal login (or a confirmed account link).
-    /// Contains the session id to set on the response.
-    LoggedIn { session_id: String },
+    /// Contains the session id to set on the response and where to redirect
+    /// the user afterwards.
+    LoggedIn { session_id: String, next: String },
     /// The login's verified email collided with a different, existing
     /// account. Nothing was created. `token` identifies the pending link so
     /// the caller can guide the user through confirming it's them, by
@@ -241,12 +242,18 @@ impl AuthManager {
     /// When `link_token` is given, this round trip confirms a pending
     /// account link rather than a plain login. The `provider_id` must
     /// therefore be one of the target account's own already-linked providers.
+    ///
+    /// `next` is where the user should be sent after a successful login. It
+    /// must be an in-app path; anything else is ignored.
     #[tracing::instrument(skip_all, fields(provider_id = %provider_id))]
     pub async fn start_login(
         &self,
         provider_id: &str,
         link_token: Option<String>,
+        next: Option<String>,
     ) -> Result<String, AuthError> {
+        let mut next = sanitize_next(next);
+
         if let Some(token) = &link_token {
             let link = self.links.get(token).await.ok_or(AuthError::LinkMismatch)?;
             let target_providers = self
@@ -255,6 +262,9 @@ impl AuthManager {
                 .await?;
             if !target_providers.iter().any(|p| p == provider_id) {
                 return Err(AuthError::LinkMismatch);
+            }
+            if next.is_none() {
+                next = link.next.clone();
             }
         }
 
@@ -293,6 +303,7 @@ impl AuthManager {
                     nonce,
                     redirect_url,
                     linking: link_token,
+                    next,
                 },
             )
             .await;
@@ -378,7 +389,7 @@ impl AuthManager {
             Some(self.confirm_pending_link(link_token, already_known).await?)
         } else if already_known.is_none()
             && let Some(outcome) = self
-                .check_email_collision(provider_id, subject, email.as_deref())
+                .check_email_collision(provider_id, subject, email.as_deref(), pl.next.clone())
                 .await?
         {
             return Ok(outcome);
@@ -409,7 +420,10 @@ impl AuthManager {
             .await;
 
         tracing::info!(user_id = %user_id, "login succeeded");
-        Ok(LoginOutcome::LoggedIn { session_id })
+        Ok(LoginOutcome::LoggedIn {
+            session_id,
+            next: pl.next.unwrap_or("/".to_string()),
+        })
     }
 
     /// Validates a login round trip that's confirming an account link.
@@ -448,6 +462,7 @@ impl AuthManager {
         provider_id: &str,
         subject: &str,
         email: Option<&str>,
+        next: Option<String>,
     ) -> Result<Option<LoginOutcome>, AuthError> {
         let Some(email) = email else {
             return Ok(None);
@@ -469,6 +484,7 @@ impl AuthManager {
                     subject: subject.to_string(),
                     email: email.to_string(),
                     target_user_id: colliding_user_id,
+                    next,
                 },
             )
             .await;
@@ -503,6 +519,19 @@ impl FromRef<AppState> for AuthManager {
     fn from_ref(input: &AppState) -> Self {
         input.auth.clone()
     }
+}
+
+/// Restricts a post-login redirect to an in-app path.
+///
+/// Rejects absolute URLs, relative paths, backslashes and
+/// control characters.
+fn sanitize_next(next: Option<String>) -> Option<String> {
+    next.filter(|next| {
+        next.starts_with('/')
+            && !next.starts_with("//")
+            && !next.contains('\\')
+            && !next.chars().any(char::is_control)
+    })
 }
 
 /// Masks an email's local part down to its first character, e.g.
