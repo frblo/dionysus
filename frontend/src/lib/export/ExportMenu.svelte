@@ -11,7 +11,8 @@
   function exportFile(type: ExportTypes) {
     if (editorRef) {
       const script = editorRef.getContent();
-      exportToFile(script, type);
+      const name = editorRef.getName();
+      exportToFile(script, name, type);
     }
   }
 </script>

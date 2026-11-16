@@ -27,7 +27,11 @@
   const wsUrl = `${proto}//${location.host}/rooms/ws`;
 
   let {
-    room = "",
+    room_info = {
+      room_id: "",
+      room_name: "",
+      role: null,
+    },
     readOnly = false,
     user = {
       name: "Anonymous" + Math.floor(Math.random() * 100),
@@ -43,7 +47,7 @@
 
   onMount(() => {
     const ydoc = new Y.Doc();
-    provider = new WebsocketProvider(wsUrl, room, ydoc);
+    provider = new WebsocketProvider(wsUrl, room_info.room_id, ydoc);
     const ytext = ydoc.getText("codemirror");
 
     undoManager = new Y.UndoManager(ytext);
@@ -137,7 +141,7 @@
     });
 
     provider.on("status", (e) => {
-      console.log(`[yws] ${e.status} ${wsUrl}/${room}`);
+      console.log(`[yws] ${e.status} ${wsUrl}/${room_info.room_id}`);
     });
 
     return () => {
@@ -168,6 +172,10 @@
 
   export function getContent() {
     return view ? view.state.doc.toString() : "";
+  }
+
+  export function getName(): string {
+    return room_info.room_name;
   }
 
   export function getCursorLine() {

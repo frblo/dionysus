@@ -9,7 +9,7 @@ export enum ExportTypes {
   Html,
 }
 
-export function exportToFile(script: string, type: ExportTypes) {
+export function exportToFile(script: string, name: string, type: ExportTypes) {
   let blob;
   let fileExtension;
   switch (type) {
@@ -31,8 +31,8 @@ export function exportToFile(script: string, type: ExportTypes) {
       console.log("Unsupported export type");
       return;
   }
-  // TODO: when multiple files exist, filename should be script name
-  const filename = `script.${fileExtension}`;
+
+  const filename = `${name}.${fileExtension}`;
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -201,7 +201,7 @@
       <div class="flex-1 overflow-auto">
         <Editor
           bind:this={editorRef}
-          room={roomId}
+          room_info={page.data.roomInfo}
           {readOnly}
           user={{ name, color }}
         />
