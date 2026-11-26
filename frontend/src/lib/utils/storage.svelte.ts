@@ -1,4 +1,4 @@
-import { tick } from 'svelte';
+import { tick } from "svelte";
 
 export class LocalStorage<T> {
   #key: string;
@@ -17,7 +17,7 @@ export class LocalStorage<T> {
     this.#key = key;
     this.#value = initial;
 
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== "undefined") {
       if (localStorage.getItem(key) === null) {
         localStorage.setItem(key, JSON.stringify(initial));
       }
@@ -28,14 +28,14 @@ export class LocalStorage<T> {
     this.#version;
 
     const root =
-      typeof localStorage !== 'undefined'
+      typeof localStorage !== "undefined"
         ? JSON.parse(localStorage.getItem(this.#key) as any)
         : this.#value;
 
     const proxies = new WeakMap();
 
     const proxy = (value: unknown) => {
-      if (typeof value !== 'object' || value === null) {
+      if (typeof value !== "object" || value === null) {
         return value;
       }
 
@@ -51,12 +51,12 @@ export class LocalStorage<T> {
             this.#version += 1;
             Reflect.set(target, property, value);
 
-            if (typeof localStorage !== 'undefined') {
+            if (typeof localStorage !== "undefined") {
               localStorage.setItem(this.#key, JSON.stringify(root));
             }
 
             return true;
-          }
+          },
         });
 
         proxies.set(value, p);
@@ -68,7 +68,7 @@ export class LocalStorage<T> {
     if ($effect.tracking()) {
       $effect(() => {
         if (this.#listeners === 0) {
-          window.addEventListener('storage', this.#handler);
+          window.addEventListener("storage", this.#handler);
         }
 
         this.#listeners += 1;
@@ -77,7 +77,7 @@ export class LocalStorage<T> {
           tick().then(() => {
             this.#listeners -= 1;
             if (this.#listeners === 0) {
-              window.removeEventListener('storage', this.#handler);
+              window.removeEventListener("storage", this.#handler);
             }
           });
         };
@@ -88,7 +88,7 @@ export class LocalStorage<T> {
   }
 
   set current(value) {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== "undefined") {
       localStorage.setItem(this.#key, JSON.stringify(value));
     }
 

@@ -1,7 +1,7 @@
 export async function createRoom(name: String): Promise<String> {
   const response = await fetch(`/api/rooms/create/${name}`, {
     method: "POST",
-    credentials: "include"
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to create room");
   const roomId: string = await response.json();
@@ -13,7 +13,7 @@ export async function renameRoom(id: String, name: String) {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name }),
   });
   if (!response.ok) throw new Error("Failed to rename room");
 }
@@ -21,7 +21,7 @@ export async function renameRoom(id: String, name: String) {
 export async function deleteRoom(id: String) {
   const response = await fetch(`/api/rooms/delete/${id}`, {
     method: "DELETE",
-    credentials: "include"
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to delete room");
 }
