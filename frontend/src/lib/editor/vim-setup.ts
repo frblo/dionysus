@@ -7,6 +7,10 @@ import type * as Y from "yjs";
 
 export const vimCompartment = new Compartment();
 
+function vimExtension() {
+  return vimCompartment.of(vim());
+}
+
 export function createVim(
   undoManager: Y.UndoManager,
   toggleComment: () => void,
@@ -38,11 +42,11 @@ export function createVim(
   Vim.unmap("<C-i>", undefined as any);
   Vim.unmap("<C-b>", undefined as any);
 
-  return vimCompartment.of(vim());
+  return vimExtension();
 }
 
 export function createBasicVim() {
-  return vimCompartment.of(vim());
+  return vimExtension();
 }
 
 export function setVimEnabled(view: EditorView, enabled: boolean) {

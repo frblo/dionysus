@@ -211,7 +211,7 @@
     <Download />
   </button>
 
-  <ExportMenu {editorRef} />
+  <ExportMenu {editorRef} name={page.data.roomInfo?.room_name ?? "script"} />
 </Header>
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">

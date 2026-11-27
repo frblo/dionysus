@@ -1,25 +1,21 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import { syntaxHighlighting } from "@codemirror/language";
-  import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
-  import { basicSetup } from "codemirror";
   import { EditorView, keymap } from "@codemirror/view";
-  import { EditorState, EditorSelection } from "@codemirror/state";
-  import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
+  import { EditorSelection } from "@codemirror/state";
 
   import * as Y from "yjs";
   import { WebsocketProvider } from "y-websocket";
   import { yCollab } from "y-codemirror.next";
 
-  import { createVim, setVimEnabled } from "$lib/editor/vim-setup";
-  import { userSettings } from "$lib/state/settings.svelte";
+  import { createVim } from "$lib/editor/vim-setup";
+  import {
+    applyEditorSettings,
+    createEditorView,
+    getEditorContent,
+  } from "$lib/editor/editor-setup";
   import { preview } from "$lib/state/preview.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { sceneScanner } from "$lib/state/scenes.svelte";
-  import {
-    createTrailingSpaces,
-    setTrailingSpacesEnabled,
-  } from "$lib/editor/trailing-spaces";
   import { debounce } from "$lib/utils/debounce";
 
   // Decide on what protocol to use based on if its https or http
@@ -55,7 +51,6 @@
     provider.awareness.setLocalStateField("user", user);
 
     const vimExt = createVim(undoManager, () => surroundSelection("/*", "*/"));
-    const trailingSpaces = createTrailingSpaces();
 
     const debouncedPreview = debounce(
       async (text: string, scrollOnPreview: boolean) => {
@@ -76,68 +71,59 @@
 
     ytext.observe(handleYTextChange);
 
-    view = new EditorView({
+    view = createEditorView({
       parent: editorEl,
-      state: EditorState.create({
-        doc: ytext.toString(),
-        extensions: [
-          fountain(),
-          syntaxHighlighting(fountainHighlightStyle),
-          basicDark,
-          trailingSpaces,
-          yCollab(ytext, provider.awareness, { undoManager }),
-          vimExt,
-          keymap.of([
-            {
-              key: "Mod-z",
-              run: () => {
-                undoManager?.undo();
-                return true;
-              },
+      doc: ytext.toString(),
+      readOnly,
+      extensions: [
+        yCollab(ytext, provider.awareness, { undoManager }),
+        vimExt,
+        keymap.of([
+          {
+            key: "Mod-z",
+            run: () => {
+              undoManager?.undo();
+              return true;
             },
-            {
-              key: "Mod-Shift-z",
-              run: () => {
-                undoManager?.redo();
-                return true;
-              },
+          },
+          {
+            key: "Mod-Shift-z",
+            run: () => {
+              undoManager?.redo();
+              return true;
             },
-            {
-              key: "Mod-u",
-              run: () => {
-                surroundSelection("_", "_");
-                return true;
-              },
+          },
+          {
+            key: "Mod-u",
+            run: () => {
+              surroundSelection("_", "_");
+              return true;
             },
-            {
-              key: "Mod-i",
-              run: () => {
-                surroundSelection("*", "*");
-                return true;
-              },
+          },
+          {
+            key: "Mod-i",
+            run: () => {
+              surroundSelection("*", "*");
+              return true;
             },
-            {
-              key: "Mod-b",
-              run: () => {
-                surroundSelection("**", "**");
-                return true;
-              },
+          },
+          {
+            key: "Mod-b",
+            run: () => {
+              surroundSelection("**", "**");
+              return true;
             },
-            {
-              key: "Mod-Shift-7",
-              run: () => {
-                surroundSelection("/*", "*/");
-                return true;
-              },
+          },
+          {
+            key: "Mod-Shift-7",
+            run: () => {
+              surroundSelection("/*", "*/");
+              return true;
             },
-          ]),
-          EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ spellcheck: "true" }),
-          EditorState.readOnly.of(readOnly),
-          sceneScanner,
-          basicSetup,
-        ],
-      }),
+          },
+        ]),
+        sceneScanner,
+      ],
     });
 
     provider.on("status", (e) => {
@@ -154,11 +140,7 @@
 
   $effect(() => {
     if (!view) return;
-    setVimEnabled(view, userSettings.current.vimEnabled);
-    setTrailingSpacesEnabled(
-      view,
-      userSettings.current.highlighTrailingSpacesEnabled,
-    );
+    applyEditorSettings(view);
   });
 
   $effect(() => {
@@ -171,11 +153,7 @@
   });
 
   export function getContent() {
-    return view ? view.state.doc.toString() : "";
-  }
-
-  export function getName(): string {
-    return room_info.room_name;
+    return getEditorContent(view);
   }
 
   export function getCursorLine() {

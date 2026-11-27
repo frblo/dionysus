@@ -1,19 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { unifiedMergeView } from "@codemirror/merge";
-  import { syntaxHighlighting } from "@codemirror/language";
-  import { basicDark } from "@fsegurai/codemirror-theme-basic-dark";
-  import { basicSetup } from "codemirror";
-  import { EditorView } from "@codemirror/view";
-  import { EditorState, type Extension } from "@codemirror/state";
-  import { fountain, fountainHighlightStyle } from "$lib/fountain-highlight";
+  import type { EditorView } from "@codemirror/view";
+  import type { Extension } from "@codemirror/state";
 
-  import { createBasicVim, setVimEnabled } from "$lib/editor/vim-setup";
-  import { userSettings } from "$lib/state/settings.svelte";
+  import { createBasicVim } from "$lib/editor/vim-setup";
   import {
-    createTrailingSpaces,
-    setTrailingSpacesEnabled,
-  } from "$lib/editor/trailing-spaces";
+    applyEditorSettings,
+    createEditorView,
+    getEditorContent,
+  } from "$lib/editor/editor-setup";
 
   let {
     content = "",
@@ -34,18 +30,7 @@
   function createView(currentContent: string, previous: string | null) {
     view?.destroy();
 
-    const trailingSpaces = createTrailingSpaces();
-    const extensions: Extension[] = [
-      fountain(),
-      syntaxHighlighting(fountainHighlightStyle),
-      vimExt,
-      basicDark,
-      trailingSpaces,
-      EditorView.lineWrapping,
-      EditorView.contentAttributes.of({ spellcheck: "true" }),
-      EditorState.readOnly.of(true),
-      basicSetup,
-    ];
+    const extensions: Extension[] = [vimExt];
 
     if (previous !== null) {
       extensions.push(
@@ -56,19 +41,12 @@
       );
     }
 
-    view = new EditorView({
+    view = createEditorView({
       parent: editorEl,
-      state: EditorState.create({
-        doc: currentContent,
-        extensions,
-      }),
+      doc: currentContent,
+      readOnly: true,
+      extensions,
     });
-
-    setVimEnabled(view, userSettings.current.vimEnabled);
-    setTrailingSpacesEnabled(
-      view,
-      userSettings.current.highlighTrailingSpacesEnabled,
-    );
 
     renderedContent = currentContent;
     renderedPreviousContent = previous;
@@ -97,15 +75,11 @@
 
   $effect(() => {
     if (!view) return;
-    setVimEnabled(view, userSettings.current.vimEnabled);
-    setTrailingSpacesEnabled(
-      view,
-      userSettings.current.highlighTrailingSpacesEnabled,
-    );
+    applyEditorSettings(view);
   });
 
   export function getContent() {
-    return view ? view.state.doc.toString() : "";
+    return getEditorContent(view);
   }
 </script>
 
