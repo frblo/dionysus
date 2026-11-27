@@ -20,6 +20,7 @@
   import HistoryPanel from "$lib/history/HistoryPanel.svelte";
   import {
     getVersion,
+    listVersions,
     restoreVersion,
     type VersionEntry,
   } from "$lib/history/api";
@@ -28,7 +29,7 @@
   let editorRef = $state(<HistoryEditor | null>null);
 
   const roomId = page.data.roomInfo?.room_id;
-  const versions: VersionEntry[] = page.data.versions;
+  let versions = $state<VersionEntry[]>(page.data.versions);
 
   const versionCache = new Map<number, string>();
   if (page.data.initialSeq !== null) {
@@ -49,6 +50,7 @@
   let content = $state(page.data.initialVersion);
   let previousContent = $state<string | null>(page.data.initialPreviousVersion);
   let loading = $state(false);
+  let refreshing = $state(false);
   let error = $state<string | null>(null);
   let latestRequest = 0;
 
@@ -106,6 +108,30 @@
       selectedSeq = displayedSeq;
     } finally {
       if (request === latestRequest) loading = false;
+    }
+  }
+
+  async function refreshVersions() {
+    if (!roomId || refreshing) return;
+
+    refreshing = true;
+    error = null;
+
+    try {
+      const updatedVersions = await listVersions(fetch, roomId);
+      versions = updatedVersions;
+
+      // If the history was empty when the page loaded, show the newest
+      // version now that one exists.
+      if (displayedSeq === null) {
+        const latest = updatedVersions[0];
+        if (latest) await selectVersion(latest.seq);
+      }
+    } catch (e) {
+      error =
+        e instanceof Error ? e.message : "Failed to refresh version history";
+    } finally {
+      refreshing = false;
     }
   }
 
@@ -190,7 +216,14 @@
 
 <div class="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
   <Sidebar />
-  <HistoryPanel {versions} {selectedSeq} {loading} onSelect={selectVersion} />
+  <HistoryPanel
+    {versions}
+    {selectedSeq}
+    {loading}
+    {refreshing}
+    onSelect={selectVersion}
+    onRefresh={refreshVersions}
+  />
   <Settings />
 
   <main class="flex flex-1 overflow-hidden bg-[#1e1e1e]">

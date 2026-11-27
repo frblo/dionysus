@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ClockHistory } from "svelte-bootstrap-icons";
+  import { ArrowClockwise, ClockHistory } from "svelte-bootstrap-icons";
   import type { VersionEntry } from "$lib/history/api";
   import { formatVersionTimestamp } from "$lib/history/format";
 
@@ -7,18 +7,22 @@
     versions,
     selectedSeq,
     loading = false,
+    refreshing = false,
     onSelect,
+    onRefresh,
   }: {
     versions: VersionEntry[];
     selectedSeq: number | null;
     loading?: boolean;
+    refreshing?: boolean;
     onSelect: (seq: number) => void;
+    onRefresh: () => void;
   } = $props();
 </script>
 
 <aside
   class="relative h-full w-72 shrink-0 bg-[#252526] border-r border-gray-700 flex flex-col z-30"
-  aria-busy={loading}
+  aria-busy={loading || refreshing}
 >
   <div
     class="px-4 py-3 border-b border-gray-700 flex justify-between items-center"
@@ -26,7 +30,23 @@
     <span class="text-xs font-bold uppercase tracking-wider text-gray-400"
       >Version history</span
     >
-    <span class="text-xs text-gray-500">{versions.length}</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-xs text-gray-500">{versions.length}</span>
+      <button
+        type="button"
+        class="p-1 rounded text-gray-400 hover:text-white hover:bg-[#3c3c3c] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+        onclick={onRefresh}
+        disabled={refreshing}
+        title="Refresh version history"
+        aria-label="Refresh version history"
+      >
+        <ArrowClockwise
+          class={refreshing ? "animate-spin" : ""}
+          width="14"
+          height="14"
+        />
+      </button>
+    </div>
   </div>
 
   <div class="flex-1 overflow-y-auto custom-scrollbar">
