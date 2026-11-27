@@ -175,7 +175,7 @@
   <title>{page.data.roomInfo?.room_name} history - Dionysus</title>
 </svelte:head>
 
-<Header title="{page.data.roomInfo?.room_name} - history">
+<Header title={page.data.roomInfo?.room_name}>
   {#snippet leftChildren()}
     {#if roomId}
       <a
@@ -259,12 +259,11 @@
 {#if restoreTarget}
   <Modal title="Restore document" closeModal={closeRestoreModal}>
     <p class="mb-4 text-xs text-gray-400">
-      Restore the document to the version from
+      Restore the document to the version
       <span class="text-gray-200">
         {formatVersionTimestamp(restoreTarget.createdAt)}
-      </span>
-      ? This replaces the current document for everyone editing it. The version history
-      is kept and the restore is recorded as a new version.
+      </span>? This replaces the current document for everyone editing it. The
+      version history is kept and the restore is recorded as a new version.
     </p>
 
     {#if restoreError}
