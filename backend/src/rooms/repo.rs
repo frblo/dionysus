@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Duration;
 use sqlx::{Executor, Postgres, Transaction};
 use uuid::Uuid;
 
@@ -6,7 +7,7 @@ use crate::db::Db;
 use crate::rooms::error::Error;
 use crate::rooms::storage::{
     CreateRoomOptions, LoadUpdatesOptions, LogSeq, RoomInfo, Snapshot, SnapshotInfo, Storage,
-    UpdateEntry,
+    UpdateEntry, UpdateInfo,
 };
 
 impl From<sqlx::Error> for Error {
@@ -462,5 +463,131 @@ impl Storage for DatabaseStorage {
                 size_bytes: r.size_bytes as u64,
             })
             .collect())
+    }
+
+    async fn list_grouped_updates(
+        &self,
+        room_id: Uuid,
+        interval: Duration,
+    ) -> Result<Vec<UpdateInfo>, Error> {
+        if interval <= Duration::zero() {
+            return Err(Error::InvalidArgument(
+                "interval must be positive".to_string(),
+            ));
+        }
+
+        let pg_interval = sqlx::postgres::types::PgInterval::try_from(interval).map_err(|e| {
+            Error::InvalidArgument(format!("interval cannot be represented in storage: {e}"))
+        })?;
+
+        let rows = sqlx::query!(
+            r#"
+            WITH latest AS (
+                SELECT
+                    max(seq) AS seq
+                FROM
+                    room_updates
+                WHERE
+                    room_id = $1
+                GROUP BY
+                    date_bin($2::interval, created_at, TIMESTAMPTZ 'epoch')
+            )
+            SELECT
+                u.seq AS "covered_through!",
+                u.created_at AS "created_at!"
+            FROM
+                room_updates u
+                JOIN latest l ON l.seq = u.seq
+            WHERE
+                u.room_id = $1
+            ORDER BY
+                u.seq ASC"#,
+            room_id,
+            pg_interval
+        )
+        .fetch_all(self.db.pool())
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| UpdateInfo {
+                covered_through: r.covered_through as u64,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{DateTime, Utc};
+
+    async fn make_room(storage: &DatabaseStorage) -> Uuid {
+        storage
+            .create_room("Test Room", CreateRoomOptions::default())
+            .await
+            .unwrap()
+            .room_id
+    }
+
+    async fn insert_update(
+        pool: &sqlx::PgPool,
+        room_id: Uuid,
+        seq: i64,
+        created_at: DateTime<Utc>,
+    ) {
+        sqlx::query!(
+            r#"
+            INSERT INTO room_updates (room_id, seq, bytes, created_at)
+                VALUES ($1, $2, $3, $4)"#,
+            room_id,
+            seq,
+            b"update".as_slice(),
+            created_at
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    fn at(timestamp: &str) -> DateTime<Utc> {
+        timestamp.parse().unwrap()
+    }
+
+    #[sqlx::test]
+    async fn list_grouped_updates_is_empty_for_room_without_updates(pool: sqlx::PgPool) {
+        let storage = DatabaseStorage::new(Db::new(pool)).await;
+        let room_id = make_room(&storage).await;
+
+        let updates = storage
+            .list_grouped_updates(room_id, Duration::hours(1))
+            .await
+            .unwrap();
+
+        assert!(updates.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn list_grouped_updates_keeps_last_update_per_bucket(pool: sqlx::PgPool) {
+        let storage = DatabaseStorage::new(Db::new(pool.clone())).await;
+        let room_id = make_room(&storage).await;
+
+        insert_update(&pool, room_id, 1, at("2026-01-01T10:01:00Z")).await;
+        insert_update(&pool, room_id, 2, at("2026-01-01T10:30:00Z")).await;
+        insert_update(&pool, room_id, 3, at("2026-01-01T10:59:59Z")).await;
+        insert_update(&pool, room_id, 4, at("2026-01-01T11:00:00Z")).await;
+
+        let updates = storage
+            .list_grouped_updates(room_id, Duration::hours(1))
+            .await
+            .unwrap();
+
+        assert_eq!(updates.len(), 2);
+        assert_eq!(updates[0].covered_through, 3);
+        assert_eq!(updates[0].created_at, at("2026-01-01T10:59:59Z"));
+        assert_eq!(updates[1].covered_through, 4);
+        assert_eq!(updates[1].created_at, at("2026-01-01T11:00:00Z"));
     }
 }

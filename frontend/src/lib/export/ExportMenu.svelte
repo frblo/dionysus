@@ -2,7 +2,7 @@
   import { editorViewSettings } from "$lib/state/settings.svelte";
   import { exportToFile, ExportTypes } from "$lib/export/export.svelte";
 
-  let { editorRef } = $props();
+  let { editorRef, name = "script" } = $props();
 
   function closeMenu() {
     editorViewSettings.exportMenuOpen = false;
@@ -10,9 +10,7 @@
 
   function exportFile(type: ExportTypes) {
     if (editorRef) {
-      const script = editorRef.getContent();
-      const name = editorRef.getName();
-      exportToFile(script, name, type);
+      exportToFile(editorRef.getContent(), name, type);
     }
   }
 </script>
