@@ -338,6 +338,8 @@ async fn restore_version(
 ) -> Result<StatusCode, rooms::Error> {
     let actor = Actor::from(&session);
 
+    ensure_can_view(&actor, room_id, &state.authz).await?;
+
     state
         .authz
         .require_room(&actor, RoomAction::Edit, room_id)
